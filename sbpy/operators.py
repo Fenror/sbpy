@@ -3,46 +3,73 @@
 import numpy as np
 from scipy import sparse
 
-def get_fd_op(num_grid_points, h, accuracy=2):
-    """Get finite difference operator.
+class SBP1D:
+    """ Class representing a 1D finite difference SBP operator. """
 
-    For now supports only 2nd order operator.
+    def __init__(self, N, dx):
+        """ Initializes an SBP1D object.
 
-    Args:
-        num_grid_points: The number of grid points.
-        h: Distance between consecutive grid points.
-        accuracy: The interior accuracy of the operator. Currently only supports
-            the default value 2.
+        Args:
+            N: The number of grid points.
+            dx: The spacing between the grid points.
+        """
 
-    Returns:
-        D, P, Q: Here D is the SBP operator as a numpy 2d array.
-                 P is the integration matrix.
-                 Q is such that D = P^(-1) Q
+        if accuracy != 2:
+            raise ValueError('Accuracy must be 2')
+
+        self.N  = N
+        self.dx = dx
+
+        stencil = np.array([-0.5, 0.0, 0.5])
+        MID = sparse.diags(stencil,
+                           [0, 1, 2],
+                           shape=(N-2, N))
+
+        TOP = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [0, 1])),
+                                shape=(1, N))
+        BOT = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [N-2, N-1])),
+                                shape=(1, N))
+
+        self.Q = sparse.vstack([TOP, MID, BOT])
+
+        p     = np.ones(self.N)
+        p     = dx*p
+        p[0]  = 0.5*dx
+        p[-1] = 0.5*dx
+        p_inv = 1/p
+
+        self.P = sparse.diags([p], [0])
+        self.P_inv = sparse.diags([p_inv], [0])
+        self.D = self.P_inv*self.Q
+
+
+class SBP2D:
+    """ Class representing 2D finite difference SBP operators.
+
+    This class defines 2D curvilinear SBP operators on a supplied grid X, Y.
+    Here X and Y are 2D numpy arrays representing the x- and y-values of the
+    grid. X and Y should be structured such that (X[i,j], Y[i,j]) is equal to
+    the (i,j):th grid node (x_i, y_j).
     """
 
-    if accuracy != 2:
-        raise ValueError('Accuracy must be 2')
+    def __init__(self, X, Y):
+        """ Initializes an SBP2D object.
 
-    N = num_grid_points
-    stencil = np.array([-0.5, 0.0, 0.5])
-    MID = \
-        sparse.diags(stencil, [0, 1, 2], shape=(N-2, N))
+        Args:
+            X: The x-values of the grid nodes.
+            Y: The y-values of the grid nodes.
 
-    TOP = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [0, 1])),
-                            shape=(1, N))
-    BOT = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [N-2, N-1])),
-                            shape=(1, N))
+        """
+        assert(X.shape == Y.shape)
 
-    Q = sparse.vstack([TOP, MID, BOT])
-    p = np.ones(N)
-    p = h*p
-    p[0] = 0.5*h
-    p[-1] = 0.5*h
-    p_inv = 1/p
-    P = sparse.diags([p], [0])
-    P_inv = sparse.diags([p_inv], [0])
-    D = P_inv*Q
+        self.X = X
+        self.Y = Y
+        (self.Nx, self.Ny) = X.shape
 
-    return D,P,Q
-
-D,P,Q = get_fd_op(5,1/4,2)
+        self.sbp_xi  = SBP1D(Nx, 1/(Nx-1))
+        self.sbp_eta = SBP1D(Ny, 1/(Ny-1))
+        self.dx_dxi  = self.sbp_xi.D @ X
+        self.dx_deta = X @ np.transpose(self.sbp_eta.D)
+        self.dy_dxi  = self.sbp_xi.D @ Y
+        self.dy_deta = Y @ np.transpose(self.sbp_eta.D)
+        self.J       = dx_dxi*dy_deta + dx_deta*dy_dxi
