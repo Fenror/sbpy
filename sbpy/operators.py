@@ -49,7 +49,7 @@ class SBP2D:
     This class defines 2D curvilinear SBP operators on a supplied grid X, Y.
     Here X and Y are 2D numpy arrays representing the x- and y-values of the
     grid. X and Y should be structured such that (X[i,j], Y[i,j]) is equal to
-    the (i,j):th grid node (x_i, y_j).
+    the (i,j):th grid node (x_ij, y_ij).
     """
 
     def __init__(self, X, Y):
@@ -66,10 +66,32 @@ class SBP2D:
         self.Y = Y
         (self.Nx, self.Ny) = X.shape
 
+        self.Ix      = sparse.eye(Nx)
+        self.Iy      = sparse.eye(Ny)
         self.sbp_xi  = SBP1D(Nx, 1/(Nx-1))
         self.sbp_eta = SBP1D(Ny, 1/(Ny-1))
         self.dx_dxi  = self.sbp_xi.D @ X
         self.dx_deta = X @ np.transpose(self.sbp_eta.D)
         self.dy_dxi  = self.sbp_xi.D @ Y
         self.dy_deta = Y @ np.transpose(self.sbp_eta.D)
-        self.J       = dx_dxi*dy_deta + dx_deta*dy_dxi
+        self.jac     = dx_dxi*dy_deta + dx_deta*dy_dxi
+
+        """ Construct 2D SBP operators. """
+        self.Jinv = sparse.diags(1/self.jac.flatten())
+        self.Xxi  = sparse.diags(self.dx_dxi.flatten())
+        self.Xeta = sparse.diags(self.dx_deta.flatten())
+        self.Yxi  = sparse.diags(self.dy_dxi.flatten())
+        self.Yeta = sparse.diags(self.dy_deta.flatten())
+        self.Dxi  = sparse.kron(self.sbp_xi.D, self.Iy)
+        self.Deta = sparse.kron(self.Ix, self.sbp_eta.D)
+        self.Dx   = 0.5*self.Jinv*(self.Yeta @ self.Dxi +
+                                   self.Dxi @ self.Yeta -
+                                   self.Yxi @ self.Deta -
+                                   self.Deta @ self.Yxi)
+        self.Dy   = 0.5*self.Jinv*(self.Xxi @ self.Deta +
+                                   self.Deta @ self.Xxi -
+                                   self.Xeta @ self.Dxi -
+                                   self.Dxi @ self.Xeta)
+
+        """ Compute normals. """
+
