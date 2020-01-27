@@ -57,6 +57,27 @@ class Multiblock:
                 idx = np.argwhere(np.all(c == self.corners, axis=1)).item()
                 indices.append(idx)
             self.faces.append(np.array(indices))
+        self.faces = np.array(self.faces)
+
+        # Save unique edges
+        self.edges = []
+        for face in self.faces:
+            for k in range(4):
+                self.edges.append(np.array(sorted([face[k], face[(k+1)%4]])))
+
+        self.edges = np.unique(self.edges, axis=0)
+
+        # Save face edges
+        print(self.edges)
+        self.face_edges = []
+        for face in self.faces:
+            self.face_edges.append({})
+            for k,side in enumerate(['s','e','n','w']):
+                edge = np.array(sorted([face[k], face[(k+1)%4]]))
+                self.face_edges[-1][side] = \
+                    np.argwhere(np.all(edge == self.edges, axis=1)).item()
+
+        print(self.face_edges)
 
 
     def plot_grid(self):
