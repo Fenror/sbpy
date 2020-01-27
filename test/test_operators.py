@@ -10,7 +10,7 @@ class TestOperators(unittest.TestCase):
         self.x = np.linspace(0, 1, self.N)
         self.dx = 1/(self.N-1)
         self.accuracy = 2
-        self.sbp_op = sbpy.operators.SBP1D(self.N, self.dx, self.accuracy)
+        self.sbp_op = sbpy.operators.SBP1D(self.N, self.dx)
         self.D = self.sbp_op.D
         self.P = self.sbp_op.P
         self.Q = self.sbp_op.Q
