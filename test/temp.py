@@ -21,6 +21,8 @@ from sbpy import grid2d
 #n = foo.normals['s'][0]
 #foo.plot()
 
-X,Y = grid2d.load_p3d('/Users/oskal44/temp/cyl5x5.p3d')
-foo = operators.SBP2D(X[0],Y[0])
-foo.plot()
+X,Y = grid2d.load_p3d('cyl.p3d')
+#foo = operators.SBP2D(X[0],Y[0])
+#foo.plot()
+foo = grid2d.Multiblock(X,Y)
+foo.plot_domain()
