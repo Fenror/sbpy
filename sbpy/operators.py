@@ -1,5 +1,6 @@
 """This module contains functions for getting SBP operators."""
 
+from sbpy import grid2d
 import numpy as np
 from scipy import sparse
 import matplotlib.pyplot as plt
@@ -48,6 +49,11 @@ class SBP2D:
     Here X and Y are 2D numpy arrays representing the x- and y-values of the
     grid. X and Y should be structured such that (X[i,j], Y[i,j]) is equal to
     the (i,j):th grid node (x_ij, y_ij).
+
+    Attributes:
+        normals: A dictionary containing the normals for each boundary. The keys
+                 are 's' for south, 'e' for east, 'n' for north, 'w' for west.
+                 For example, normals['w']
     """
 
     def __init__(self, X, Y):
@@ -97,6 +103,37 @@ class SBP2D:
                                    self.Dxi @ self.Xeta)
         self.P = self.J@sparse.kron(self.sbp_xi.P, self.sbp_eta.P)
 
+        """ Construct boundary quadratures. """
+        self.boundary_quadratures = {}
+        self.pxi = np.diag(self.sbp_xi.P.todense())
+        self.peta = np.diag(self.sbp_eta.P.todense())
+
+        dx_deta_w = grid2d.get_function_boundary(self.dx_deta, 'w')
+        dy_deta_w = grid2d.get_function_boundary(self.dy_deta, 'w')
+        self.boundary_quadratures['w'] = \
+                self.peta*np.sqrt(dx_deta_w**2 + dy_deta_w**2)
+
+        dx_deta_e = grid2d.get_function_boundary(self.dx_deta, 'e')
+        dy_deta_e = grid2d.get_function_boundary(self.dy_deta, 'e')
+        self.boundary_quadratures['e'] = \
+                self.peta*np.sqrt(dx_deta_e**2 + dy_deta_e**2)
+
+        dx_dxi_s = grid2d.get_function_boundary(self.dx_dxi, 's')
+        dy_dxi_s = grid2d.get_function_boundary(self.dy_dxi, 's')
+        self.boundary_quadratures['s'] = \
+                self.pxi*np.sqrt(dx_dxi_s**2 + dy_dxi_s**2)
+
+        dx_dxi_n = grid2d.get_function_boundary(self.dx_dxi, 'n')
+        dy_dxi_n = grid2d.get_function_boundary(self.dy_dxi, 'n')
+        self.boundary_quadratures['n'] = \
+                self.pxi*np.sqrt(dx_dxi_n**2 + dy_dxi_n**2)
+
+        """ Construct P^(-1) at boundaries. """
+        self.pinv = {}
+        for side in ['s','e','n','w']:
+            self.pinv[side] = grid2d.get_function_boundary(
+                    self.jac*np.outer(self.pxi, self.peta), side)
+
         """ Compute normals. """
         self.normals = {}
         self.normals['w'] = \
@@ -135,3 +172,11 @@ class SBP2D:
                          fc='k', ec='k')
         ax.axis('equal')
         plt.show()
+
+
+    def diffx(self, u):
+        return np.reshape(self.Dx*u.flatten(), self.Nx, self.Ny)
+
+
+    def diffy(self, u):
+        return np.reshape(self.Dy*u.flatten(), self.Nx, self.Ny)

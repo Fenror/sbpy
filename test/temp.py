@@ -3,6 +3,7 @@ sys.path.append('..')
 import numpy as np
 from sbpy import operators
 from sbpy import grid2d
+from sbpy import multiblock_solvers
 
 #xi = np.linspace(0,1,10)
 #eta = np.linspace(0,1,7)
@@ -26,3 +27,6 @@ X,Y = grid2d.load_p3d('cyl.p3d')
 #foo.plot()
 foo = grid2d.Multiblock(X,Y)
 foo.plot_domain()
+
+bar = multiblock_solvers.AdvectionSolver(foo)
+
