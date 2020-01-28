@@ -30,16 +30,3 @@ class AdvectionSolver:
         for (i, u) in enumerate(U):
             Ut[i,:,:] = -self.velocity[0]*self.ops[i].diffx(u) \
                         -self.velocity[1]*self.ops[i].diffy(u)
-
-            for side in ['s', 'e', 'n', 'w']:
-                normals = self.ops[i].normals[side]
-                flow_velocity = np.array([self.velocity@n for n in normals])
-                pinv = self.ops[i].pinv[side]
-                bd_quad = self.ops[i].boundary_quadratures[side]
-
-                if self.grid.is_interface(i, side):
-                    (friend_idx, friend_side) = self.grid.interfaces[i][side]
-                    data = grid2d.get_function_boundary(
-                            U[friend_idx], friend_side)
-                else:
-                    data = 0

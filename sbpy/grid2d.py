@@ -165,6 +165,13 @@ class Multiblock:
                     self.interfaces[j][side2] = (i, side1)
 
 
+    def evaluate_function(self, f):
+        """ Evaluates a (vectorized) function on the grid. """
+        return f(self.X_blocks, self.Y_blocks)
+
+
+
+
     def is_interface(self, block_idx, side):
         """ Check if a given side is an interface.
 
