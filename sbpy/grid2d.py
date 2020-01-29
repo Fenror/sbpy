@@ -84,6 +84,11 @@ class Multiblock:
                     the northern boundary of the block i coincides with the
                     western boundary of the western boundary of block j.
 
+        non_interfaces: A list of lists specifying the non-interfaces of each
+                        block. For example, if non_interfaces[i] = ['w', 'n'],
+                        then the western and northern sides of block i are not
+                        interfaces.
+
         num_blocks: The total number of blocks in the grid.
 
         Nx: A list of the number of grid points in the x-direction of each block.
@@ -163,6 +168,18 @@ class Multiblock:
                 if edges1[side1] == edges2[side2]:
                     self.interfaces[i][side1] = (j, side2)
                     self.interfaces[j][side2] = (i, side1)
+
+        # Find non-interfaces
+        self.non_interfaces = [[] for _ in range(self.num_blocks)]
+        for (i,edges) in enumerate(self.face_edges):
+            is_interface = False
+            other_edges = \
+                np.array([ np.fromiter(other_edges.values(), dtype=float) for
+                    (j, other_edges) in enumerate(self.face_edges) if j != i])
+            for side in ['s', 'e', 'n', 'w']:
+                if edges[side] not in other_edges.flatten():
+                    self.non_interfaces[i].append(side)
+
 
 
     def evaluate_function(self, f):

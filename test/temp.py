@@ -1,6 +1,8 @@
 import sys
 sys.path.append('..')
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from sbpy import operators
 from sbpy import grid2d
 from sbpy import multiblock_solvers
@@ -24,9 +26,21 @@ from sbpy import multiblock_solvers
 
 X,Y = grid2d.load_p3d('cyl.p3d')
 #foo = operators.SBP2D(X[0],Y[0])
-#foo.plot()
 foo = grid2d.Multiblock(X,Y)
-foo.plot_domain()
+#foo.plot_grid()
+#foo.plot_domain()
 
 bar = multiblock_solvers.AdvectionSolver(foo)
+bar.solve()
+#print(np.reshape(bar.sol.y[:,-1],(4,10,10)))
+fin = np.reshape(bar.sol.y[:,-1],(4,10,10))
+print(fin)
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+for (i,(x,y)) in enumerate(zip(X,Y)):
+    ax.plot_surface(x,y,fin[i])
+
+plt.show()
+#print(foo.non_interfaces)
+#print(foo.interfaces)
 

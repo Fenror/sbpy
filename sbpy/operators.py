@@ -137,17 +137,17 @@ class SBP2D:
         """ Compute normals. """
         self.normals = {}
         self.normals['w'] = \
-            [ np.array([-nx, ny])/np.linalg.norm([nx, ny]) for
-              (nx,ny) in zip(self.dy_deta[0,:], self.dx_deta[0,:]) ]
+            np.array([ np.array([-nx, ny])/np.linalg.norm([nx, ny]) for
+              (nx,ny) in zip(self.dy_deta[0,:], self.dx_deta[0,:]) ])
         self.normals['e'] = \
-            [ np.array([nx, -ny])/np.linalg.norm([nx, ny]) for
-              (nx,ny) in zip(self.dy_deta[-1,:], self.dx_deta[-1,:]) ]
+            np.array([ np.array([nx, -ny])/np.linalg.norm([nx, ny]) for
+              (nx,ny) in zip(self.dy_deta[-1,:], self.dx_deta[-1,:]) ])
         self.normals['s'] = \
-            [ np.array([nx, -ny])/np.linalg.norm([nx, ny]) for
-             (nx,ny) in zip(self.dy_dxi[:,0], self.dx_dxi[:,0]) ]
+            np.array([ np.array([nx, -ny])/np.linalg.norm([nx, ny]) for
+             (nx,ny) in zip(self.dy_dxi[:,0], self.dx_dxi[:,0]) ])
         self.normals['n'] = \
-            [ np.array([-nx, ny])/np.linalg.norm([nx, ny]) for
-             (nx,ny) in zip(self.dy_dxi[:,-1], self.dx_dxi[:,-1]) ]
+            np.array([ np.array([-nx, ny])/np.linalg.norm([nx, ny]) for
+             (nx,ny) in zip(self.dy_dxi[:,-1], self.dx_dxi[:,-1]) ])
 
 
     def plot(self):
@@ -175,8 +175,8 @@ class SBP2D:
 
 
     def diffx(self, u):
-        return np.reshape(self.Dx*u.flatten(), self.Nx, self.Ny)
+        return np.reshape(self.Dx*u.flatten(), (self.Nx, self.Ny))
 
 
     def diffy(self, u):
-        return np.reshape(self.Dy*u.flatten(), self.Nx, self.Ny)
+        return np.reshape(self.Dy*u.flatten(), (self.Nx, self.Ny))
