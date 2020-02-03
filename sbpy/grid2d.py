@@ -93,11 +93,8 @@ class Multiblock:
     """ Represents a structured multiblock grid.
 
     Attributes:
-        X_blocks: A list of 2D numpy arrays containing x-values for each
-                  block.
-
-        Y_blocks: A list of 2D numpy arrays containing y-values for each
-                  block.
+        blocks: A list of pairs of 2D numpy arrays containing x- and y-values for
+                each block.
 
         corners: A list of unique corners in the grid.
 
@@ -133,38 +130,31 @@ class Multiblock:
         Ny: A list of the number of grid points in the y-direction of each block.
     """
 
-    def __init__(self, X_blocks, Y_blocks):
+    def __init__(self, blocks):
         """ Initializes a Multiblock object.
 
         Args:
-            X_blocks: A list of 2D numpy arrays containing x-values for each
-                      block.
-            Y_blocks: A list of 2D numpy arrays containing y-values for each
-                      block.
+            blocks: A list of pairs of 2D numpy arrays containing x- and y-values
+                   for each block.
 
-            Note that the structure of these blocks should be such that
-            (X_blocks[k][i,j], Y_blocks[k][i,j]) is the (i,j):th node in the
-            k:th block.
+            Note that the structure of these blocks should be such that for the
+            k:th element (X,Y) in the blocks list, we have that (X[i,j],Y[i,j])
+            is the (i,j):th node in the k:th block.
         """
 
-        assert(len(X_blocks) == len(Y_blocks))
-        self.num_blocks = len(X_blocks)
+        for (X,Y) in blocks:
+            assert(X.shape == Y.shape)
 
-        self.Nx = []
-        self.Ny = []
+        self.blocks = blocks
+        self.num_blocks = len(blocks)
+
         self.shapes = []
-        for k in range(self.num_blocks):
-            assert(X_blocks[k].shape == Y_blocks[k].shape)
-            self.Nx.append(X_blocks[k].shape[0])
-            self.Ny.append(X_blocks[k].shape[1])
-            self.shapes.append((self.Nx[k], self.Ny[k]))
-
-        self.X_blocks = X_blocks
-        self.Y_blocks = Y_blocks
+        for (X,Y) in blocks:
+            self.shapes.append((X.shape[0], X.shape[1]))
 
         # Save unique corners
         self.corners = []
-        for X,Y in zip(X_blocks, Y_blocks):
+        for X,Y in self.blocks:
             self.corners.append(get_corners(X,Y))
 
         self.corners = np.unique(np.concatenate(self.corners), axis=0)
@@ -172,7 +162,7 @@ class Multiblock:
         # Save faces in terms of unique corners
         self.faces = []
 
-        for k,(X,Y) in enumerate(zip(X_blocks, Y_blocks)):
+        for k,(X,Y) in enumerate(self.blocks):
             block_corners = get_corners(X,Y)
             indices = []
             for c in block_corners:
@@ -222,7 +212,11 @@ class Multiblock:
 
     def evaluate_function(self, f):
         """ Evaluates a (vectorized) function on the grid. """
-        return [ f(X,Y) for (X,Y) in zip(self.X_blocks, self.Y_blocks) ]
+        return [ f(X,Y) for (X,Y) in self.blocks ]
+
+
+    def get_blocks(self):
+        return self.blocks
 
 
     def get_shapes(self):
@@ -245,7 +239,7 @@ class Multiblock:
         """ Plot the entire grid. """
 
         fig, ax = plt.subplots()
-        for X,Y in zip(self.X_blocks, self.Y_blocks):
+        for X,Y in self.blocks:
             ax.plot(X,Y,'b')
             ax.plot(np.transpose(X),np.transpose(Y),'b')
             for side in {'w', 'e', 's', 'n'}:
@@ -259,7 +253,7 @@ class Multiblock:
         """ Fancy domain plot without gridlines. """
 
         fig, ax = plt.subplots()
-        for k,(X,Y) in enumerate(zip(self.X_blocks, self.Y_blocks)):
+        for k,(X,Y) in enumerate(self.blocks):
             xs,ys = get_boundary(X,Y,'s')
             xe,ye = get_boundary(X,Y,'e')
             xn,yn = get_boundary(X,Y,'n')
@@ -318,6 +312,7 @@ def load_p3d(filename):
             Nx.append(size[0])
             Ny.append(size[1])
 
+        blocks = []
         for k in range(num_blocks):
             X_cur = []
             Y_cur = []
@@ -326,12 +321,13 @@ def load_p3d(filename):
             for n in range(Nx[k]):
                 Y_cur.append(np.fromstring(data.readline(), sep=' '))
 
-            X.append(np.array(X_cur))
-            Y.append(np.array(Y_cur))
+            blocks.append((np.array(X_cur),np.array(Y_cur)))
+            #X.append(np.array(X_cur))
+            #Y.append(np.array(Y_cur))
             for _ in range(Nx[k]):
                 next(data)
 
 
-    return (X,Y)
+    return blocks
 
 

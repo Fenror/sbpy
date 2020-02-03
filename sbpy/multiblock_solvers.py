@@ -63,14 +63,18 @@ class TestSolver:
 
 
 class AdvectionSolver:
-    """ A linear scalar advection solver. """
+    """ A multiblock linear scalar advection solver. """
 
     def __init__(self, grid):
         self.grid = grid
         self.velocity = np.array([1.0,1.0])
         self.ops = []
-        self.U = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        for (X,Y) in zip(grid.X_blocks, grid.Y_blocks):
+        self.U  = [ np.zeros(shape) for shape in grid.get_shapes() ]
+        self.Ux = [ np.zeros(shape) for shape in grid.get_shapes() ]
+        self.Uy = [ np.zeros(shape) for shape in grid.get_shapes() ]
+        self.Ut = [ np.zeros(shape) for shape in grid.get_shapes() ]
+
+        for (X,Y) in grid.get_blocks():
             self.ops.append(operators.SBP2D(X,Y))
 
         self.inflow = [ {} for _ in range(self.grid.num_blocks) ]
@@ -122,7 +126,7 @@ class AdvectionSolver:
 
     def solve(self):
         init = np.ones((4,50,50))
-        for (k, (X,Y)) in enumerate(zip(self.grid.X_blocks, self.grid.Y_blocks)):
+        for (k, (X,Y)) in enumerate(self.grid.get_blocks()):
             init[k,:,:] = 0.1*norm.pdf(Y,loc=0.0,scale=0.05) \
                              *norm.pdf(X,loc=-0.6,scale=0.05)
         T = 1.0
