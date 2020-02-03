@@ -63,7 +63,8 @@ class TestSolver:
 
 
 class AdvectionSolver:
-    """ A multiblock linear scalar advection solver. """
+    """ A multiblock linear scalar advection solver. Currently assumes same
+    resolution in all blocks. """
 
     def __init__(self, grid):
         self.grid = grid
@@ -77,6 +78,9 @@ class AdvectionSolver:
         for (X,Y) in grid.get_blocks():
             self.ops.append(operators.SBP2D(X,Y))
 
+        # Save bool arrays determining inflows. For example, if inflow[k]['w'][j]
+        # is True, then the j:th node of the western boundary of the k:th block
+        # is an inflow node.
         self.inflow = [ {} for _ in range(self.grid.num_blocks) ]
         for k in range(self.grid.num_blocks):
             for side in {'s', 'e', 'n', 'w'}:
@@ -86,43 +90,53 @@ class AdvectionSolver:
                 self.inflow[k][side] = inflow
 
 
-    def Dt(self, U):
-        Ut = np.zeros(shape=U.shape)
-        Ux = np.array([self.ops[i].diffx(U[i,:,:]) for
-            i in range(self.grid.num_blocks)])
-        Uy = np.array([self.ops[i].diffy(U[i,:,:]) for
-            i in range(self.grid.num_blocks)])
+        # Save penalty coefficients for each boundary
+        self.penalty_coeffs = [ {} for _ in range(self.grid.num_blocks) ]
+        for block_idx in range(self.grid.num_blocks):
+            for side in ['s', 'e', 'n', 'w']:
+                sbp_op  = self.grid.sbp_ops[block_idx]
+                pinv    = sbp_op.pinv[side]
+                bd_quad = sbp_op.boundary_quadratures[side]
+                in_vel  = -self.ops[block_idx].normals[side]@self.velocity
+                self.penalty_coeffs[block_idx][side] = \
+                        -0.5*in_vel*pinv*bd_quad*self.inflow[block_idx][side]
 
-        for (block_idx, (ux, uy)) in enumerate(zip(Ux, Uy)):
-            Ut[block_idx,:,:] = -(self.velocity[0]*ux+self.velocity[1]*uy)
 
-        for (block_idx, interfaces) in enumerate(self.grid.interfaces):
+    def update_sol(self, U):
+        self.U = U
+
+
+    def compute_spatial_derivatives(self):
+        self.Ux = self.grid.diffx(self.U)
+        self.Uy = self.grid.diffy(self.U)
+
+
+    def compute_temporal_derivative(self):
+        a = self.velocity[0]
+        b = self.velocity[1]
+        self.Ut = [ -(a*ux + b*uy) for (ux,uy) in zip(self.Ux, self.Uy) ]
+
+        for (local_idx, interfaces) in enumerate(self.grid.get_interfaces()):
             for interface in interfaces.items():
-                my_side       = interface[0]
+                local_side    = interface[0]
                 neighbor_idx  = interface[1][0]
                 neighbor_side = interface[1][1]
-                pinv    = self.ops[block_idx].pinv[my_side]
-                bd_quad = self.ops[block_idx].boundary_quadratures[my_side]
-                in_vel  = -self.ops[block_idx].normals[my_side]@self.velocity
-                my_sol  = grid2d.get_function_boundary(U[block_idx,:,:], my_side)
-                neighbor_sol = self.grid.get_neighbor_boundary(
-                        U[neighbor_idx,:,:], block_idx, my_side)
-                sigma = -0.5*in_vel*pinv*bd_quad*self.inflow[block_idx][my_side]
+                local_u       = self.U[local_idx]
+                neighbor_u    = self.U[neighbor_idx]
+                local_bd      = grid2d.get_function_boundary(local_u, local_side)
+                neighbor_bd   = self.grid.get_neighbor_boundary(
+                                    neighbor_u, local_idx, local_side)
+                sigma         = self.penalty_coeffs[local_idx][local_side]
+                bd_slice      = self.grid.get_boundary_slice(local_idx, local_side)
+                self.Ut[local_idx][bd_slice] += sigma*(local_bd-neighbor_bd)
 
-                bd_slice = grid2d.get_boundary_slice(Ut[block_idx], my_side)
-                Ut[block_idx][bd_slice] += sigma*(my_sol-neighbor_sol)
+        for (block_idx, ext_bds) in enumerate(self.grid.get_external_boundaries()):
+            for side in ext_bds:
+                sol     = grid2d.get_function_boundary(self.U[block_idx], side)
+                sigma   = self.penalty_coeffs[block_idx][side]
+                bd_slice = self.grid.get_boundary_slice(block_idx, side)
+                self.Ut[block_idx][bd_slice] += sigma*sol
 
-        for (block_idx, non_interfaces) in enumerate(self.grid.non_interfaces):
-            for side in non_interfaces:
-                pinv    = self.ops[block_idx].pinv[side]
-                bd_quad = self.ops[block_idx].boundary_quadratures[side]
-                in_vel  = -self.ops[block_idx].normals[side]@self.velocity
-                sol     = grid2d.get_function_boundary(U[block_idx,:,:], side)
-                sigma   = -0.5*in_vel*pinv*bd_quad*self.inflow[block_idx][side]
-                bd_slice = grid2d.get_boundary_slice(Ut[block_idx], side)
-                Ut[block_idx][bd_slice] += sigma*sol
-
-        return Ut
 
     def solve(self):
         init = np.ones((4,50,50))
@@ -131,8 +145,9 @@ class AdvectionSolver:
                              *norm.pdf(X,loc=-0.6,scale=0.05)
         T = 1.0
         def f(t, y):
-            y = np.reshape(y,(4,50,50))
-            yt = self.Dt(y)
-            return yt.flatten()
+            self.update_sol(np.reshape(y,(4,50,50)))
+            self.compute_spatial_derivatives()
+            self.compute_temporal_derivative()
+            return np.concatenate([ ut.flatten() for ut in self.Ut ])
 
         self.sol = integrate.solve_ivp(f, (0.0, T), init.flatten())

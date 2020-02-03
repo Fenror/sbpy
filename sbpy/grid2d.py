@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 from matplotlib import rc
 rc('text', usetex=True)
 
+from sbpy import operators
+
 def get_boundary(X,Y,side):
     """ Returns the boundary of a block. """
 
@@ -47,28 +49,6 @@ def get_function_boundary(F,side):
         return F[:,0]
     elif side == 'n':
         return F[:,-1]
-
-def get_boundary_slice(F,side):
-    """ Get a slice representing the boundary of a grid function. The slice can
-    be used to index the given boundary of the grid function. For example, if
-    slice = get_boundary_slice(F,'w'), then F[slice] will refer to the western
-    boundary of F.
-
-    Args:
-        F: A grid function.
-        side: The side at which the boundary is located ('s', 'e', 'n', or 'w')
-
-    Returns:
-        slice: A slice that can be used to index the given boundary in F.
-    """
-    assert(side in ['s', 'e', 'n', 'w'])
-    (Nx, Ny) = F.shape
-    slice_dict = {'s': (slice(Nx), 0),
-                  'e': (-1, slice(Ny)),
-                  'n': (slice(Nx), -1),
-                  'w': (0, slice(Ny))}
-
-    return slice_dict[side]
 
 
 
@@ -219,6 +199,47 @@ class Multiblock:
         return self.blocks
 
 
+    def get_boundary_slice(self,k,side):
+        """ Get a slice representing the boundary of block. The slice can
+        be used to index the given boundary of a grid function on the given block.
+        For example, if slice = get_boundary_slice(k,'w') and F is a grid function,
+        then F[slice] will refer to the western boundary of F.
+
+        Args:
+            F: A grid function.
+            side: The side at which the boundary is located ('s', 'e', 'n', or 'w')
+
+        Returns:
+            slice: A slice that can be used to index the given boundary in F.
+        """
+        assert(side in ['s', 'e', 'n', 'w'])
+        (Nx, Ny) = self.shapes[k]
+        slice_dict = {'s': (slice(Nx), 0),
+                      'e': (-1, slice(Ny)),
+                      'n': (slice(Nx), -1),
+                      'w': (0, slice(Ny))}
+
+        return slice_dict[side]
+
+
+    def get_interfaces(self):
+        """ Returns a list of dictionaries containing the interfaces for each
+        block. For example, if interfaces = get_interfaces(), and
+        interfaces[i] = {'n': (j, 'w')}, then the northern boundary of the block
+        i coincides with the western boundary of the western boundary of block j.
+        """
+        return self.interfaces
+
+
+    def get_external_boundaries(self):
+        """ Returns a list of lists containing the external boundaries
+        for each block. For example, if bds = get_external_boundaries(), and
+        bds[k] = ['n', 'e'], then the northern and eastern boundaries of the
+        block k are external boundaries.
+        """
+        return self.non_interfaces
+
+
     def get_shapes(self):
         """ Returns a list of the shapes of the blocks in the grid. """
         return self.shapes
@@ -288,15 +309,36 @@ class Multiblock:
 
         flip = False
         if (neighbor_side, side) in [('s','e'), ('s','s'),
-                                   ('e','s'), ('e','e'),
-                                   ('n','w'), ('n','n'),
-                                   ('w','n'), ('w','w')]:
+                                     ('e','s'), ('e','e'),
+                                     ('n','w'), ('n','n'),
+                                     ('w','n'), ('w','w')]:
             flip = True
 
         if flip:
             return np.flip(get_function_boundary(F, neighbor_side))
         else:
             return get_function_boundary(F, neighbor_side)
+
+
+class MultiblockSBP(Multiblock):
+    """ A class combining Multiblock functionality and SBP2D functionality. """
+    def __init__(self, blocks):
+        super().__init__(blocks)
+
+        # Create SBP2D objects for each block.
+        self.sbp_ops = []
+        for (X,Y) in self.get_blocks():
+            self.sbp_ops.append(operators.SBP2D(X,Y))
+
+
+    def diffx(self, U):
+        """ Differentiates a Multiblock function with respect to x. """
+        return [ self.sbp_ops[i].diffx(U[i]) for i in range(self.num_blocks) ]
+
+
+    def diffy(self, U):
+        """ Differentiates a Multiblock function with respect to y. """
+        return [ self.sbp_ops[i].diffy(U[i]) for i in range(self.num_blocks) ]
 
 
 def load_p3d(filename):

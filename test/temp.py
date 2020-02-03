@@ -9,7 +9,7 @@ from sbpy import multiblock_solvers
 
 
 blocks = grid2d.load_p3d('cyl50.p3d')
-foo = grid2d.Multiblock(blocks)
+foo = grid2d.MultiblockSBP(blocks)
 bar = multiblock_solvers.AdvectionSolver(foo)
 bar.solve()
 fin = np.reshape(bar.sol.y[:,25],(4,50,50))
