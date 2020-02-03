@@ -131,7 +131,7 @@ class SBP2D:
         """ Construct P^(-1) at boundaries. """
         self.pinv = {}
         for side in ['s','e','n','w']:
-            self.pinv[side] = grid2d.get_function_boundary(
+            self.pinv[side] = 1/grid2d.get_function_boundary(
                     self.jac*np.outer(self.pxi, self.peta), side)
 
         """ Compute normals. """

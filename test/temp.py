@@ -7,40 +7,16 @@ from sbpy import operators
 from sbpy import grid2d
 from sbpy import multiblock_solvers
 
-#xi = np.linspace(0,1,10)
-#eta = np.linspace(0,1,7)
-#XI,ETA = np.meshgrid(xi,eta,indexing='ij')
-#X = XI-ETA
-#Y = XI+ETA
-#foo = operators.SBP2D(X,Y)
-#import matplotlib.pyplot as plt
-#print(np.diag(foo.P.todense()))
-#print(foo.jac)
-##print(foo.normals['w'])
-##print(foo.normals['e'])
-##print(foo.normals['s'])
-##print(foo.normals['n'])
-#tangent = np.array([X[0,0]-X[-1,0],Y[0,0]-Y[-1,0]])
-#n = foo.normals['s'][0]
-#foo.plot()
 
-X,Y = grid2d.load_p3d('cyl.p3d')
-#foo = operators.SBP2D(X[0],Y[0])
-foo = grid2d.Multiblock(X,Y)
-#foo.plot_grid()
-#foo.plot_domain()
-
+X_blocks,Y_blocks = grid2d.load_p3d('cyl50.p3d')
+foo = grid2d.Multiblock(X_blocks,Y_blocks)
 bar = multiblock_solvers.AdvectionSolver(foo)
 bar.solve()
-#print(np.reshape(bar.sol.y[:,-1],(4,10,10)))
-fin = np.reshape(bar.sol.y[:,-1],(4,10,10))
-print(fin)
+fin = np.reshape(bar.sol.y[:,25],(4,50,50))
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-for (i,(x,y)) in enumerate(zip(X,Y)):
+for (i,(x,y)) in enumerate(zip(X_blocks,Y_blocks)):
     ax.plot_surface(x,y,fin[i])
 
+plt.xlabel('x')
 plt.show()
-#print(foo.non_interfaces)
-#print(foo.interfaces)
-

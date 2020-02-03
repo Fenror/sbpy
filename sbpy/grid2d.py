@@ -1,4 +1,18 @@
-""" This module contains functions and classes for managing 2D grids. """
+""" This module contains functions and classes for managing 2D grids. The
+conceptual framework used throughout the module is that 2D numpy arrays represent
+function evaluations associated to some grid. For example, if F is an Nx-by-Ny
+numpy array, then F[i,j] is interpreted as the evaluation of some function F in
+an associated grid node (x_ij, y_ij). 2D numpy arrays representing function
+evaluations on a grid are called 'grid functions'. We refer to the boundaries of
+a grid function as 's' for south, 'e' for east, 'n' for north, and 'w' for west.
+More precisely the boundaries of a grid function F are
+
+    South: F[:,0]
+    East:  F[-1,:]
+    North: F[:,-1]
+    West:  F[0,:]
+
+"""
 
 import itertools
 import numpy as np
@@ -33,6 +47,29 @@ def get_function_boundary(F,side):
         return F[:,0]
     elif side == 'n':
         return F[:,-1]
+
+def get_boundary_slice(F,side):
+    """ Get a slice representing the boundary of a grid function. The slice can
+    be used to index the given boundary of the grid function. For example, if
+    slice = get_boundary_slice(F,'w'), then F[slice] will refer to the western
+    boundary of F.
+
+    Args:
+        F: A grid function.
+        side: The side at which the boundary is located ('s', 'e', 'n', or 'w')
+
+    Returns:
+        slice: A slice that can be used to index the given boundary in F.
+    """
+    assert(side in ['s', 'e', 'n', 'w'])
+    (Nx, Ny) = F.shape
+    slice_dict = {'s': (slice(Nx), 0),
+                  'e': (-1, slice(Ny)),
+                  'n': (slice(Nx), -1),
+                  'w': (0, slice(Ny))}
+
+    return slice_dict[side]
+
 
 
 def get_corners(X,Y):
@@ -113,12 +150,14 @@ class Multiblock:
         assert(len(X_blocks) == len(Y_blocks))
         self.num_blocks = len(X_blocks)
 
-        Nx = []
-        Ny = []
+        self.Nx = []
+        self.Ny = []
+        self.shapes = []
         for k in range(self.num_blocks):
             assert(X_blocks[k].shape == Y_blocks[k].shape)
-            Nx.append(X_blocks[k].shape[0])
-            Ny.append(X_blocks[k].shape[1])
+            self.Nx.append(X_blocks[k].shape[0])
+            self.Ny.append(X_blocks[k].shape[1])
+            self.shapes.append((self.Nx[k], self.Ny[k]))
 
         self.X_blocks = X_blocks
         self.Y_blocks = Y_blocks
@@ -181,12 +220,14 @@ class Multiblock:
                     self.non_interfaces[i].append(side)
 
 
-
     def evaluate_function(self, f):
         """ Evaluates a (vectorized) function on the grid. """
-        return f(self.X_blocks, self.Y_blocks)
+        return [ f(X,Y) for (X,Y) in zip(self.X_blocks, self.Y_blocks) ]
 
 
+    def get_shapes(self):
+        """ Returns a list of the shapes of the blocks in the grid. """
+        return self.shapes
 
 
     def is_interface(self, block_idx, side):
@@ -237,6 +278,31 @@ class Multiblock:
 
 
         plt.show()
+
+
+    def get_neighbor_boundary(self, F, block_idx, side):
+        """ Returns an array of boundary data from a neighboring block.
+
+        Arguments:
+            F: A 2d array of function evaluations on the neighbor block.
+            block_idx: The index of the block to send data to.
+            side: The side of the block to send data to ('s', 'e', 'n', or 'w').
+        """
+        assert(self.is_interface(block_idx, side))
+
+        neighbor_idx, neighbor_side = self.interfaces[block_idx][side]
+
+        flip = False
+        if (neighbor_side, side) in [('s','e'), ('s','s'),
+                                   ('e','s'), ('e','e'),
+                                   ('n','w'), ('n','n'),
+                                   ('w','n'), ('w','w')]:
+            flip = True
+
+        if flip:
+            return np.flip(get_function_boundary(F, neighbor_side))
+        else:
+            return get_function_boundary(F, neighbor_side)
 
 
 def load_p3d(filename):
