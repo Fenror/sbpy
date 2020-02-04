@@ -145,7 +145,9 @@ class AdvectionSolver:
                              *norm.pdf(X,loc=-0.6,scale=0.05)
         T = 1.0
         def f(t, y):
-            self.update_sol(np.reshape(y,(4,50,50)))
+            U = grid2d.array_to_multiblock_function(self.grid, y)
+            #self.update_sol(np.reshape(y,(4,50,50)))
+            self.update_sol(U)
             self.compute_spatial_derivatives()
             self.compute_temporal_derivative()
             return np.concatenate([ ut.flatten() for ut in self.Ut ])

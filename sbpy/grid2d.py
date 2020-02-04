@@ -1,17 +1,22 @@
 """ This module contains functions and classes for managing 2D grids. The
 conceptual framework used throughout the module is that 2D numpy arrays represent
-function evaluations associated to some grid. For example, if F is an Nx-by-Ny
-numpy array, then F[i,j] is interpreted as the evaluation of some function F in
+function evaluations associated to some grid. For example, if f is an Nx-by-Ny
+numpy array, then f[i,j] is interpreted as the evaluation of some function f in
 an associated grid node (x_ij, y_ij). 2D numpy arrays representing function
 evaluations on a grid are called 'grid functions'. We refer to the boundaries of
 a grid function as 's' for south, 'e' for east, 'n' for north, and 'w' for west.
-More precisely the boundaries of a grid function F are
+More precisely the boundaries of a grid function f are
 
-    South: F[:,0]
-    East:  F[-1,:]
-    North: F[:,-1]
-    West:  F[0,:]
+    South: f[:,0]
+    East:  f[-1,:]
+    North: f[:,-1]
+    West:  f[0,:]
 
+Grids (also referred to as blocks) are stored as pairs of matrices (X,Y), such
+that (X[i,j], Y[i,j]) is the (i,j):th node in the grid. Multiblock grids can be
+thought of as lists of such pairs. A list F of grid functions is called a
+'multiblock function' and should be interpreted as function evaluations on a
+sequence of grids constituting a multiblock grid.
 """
 
 import itertools
@@ -37,7 +42,7 @@ def get_boundary(X,Y,side):
         return X[:,-1], Y[:,-1]
 
 def get_function_boundary(F,side):
-    """ Returns the boundary of a function evaluated on a 2D grid. """
+    """ Returns the boundary of a grid function. """
 
     assert(side in {'w','e','s','n'})
 
@@ -67,6 +72,19 @@ def get_center(X,Y):
     """ Returns the center point of a block. """
     corners = get_corners(X,Y)
     return 0.25*(corners[0] + corners[1] + corners[2] + corners[3])
+
+
+def array_to_multiblock_function(grid, array):
+    """ Converts a flat array to a multiblock function. """
+    shapes = grid.get_shapes()
+    F = [ np.zeros(shape) for shape in shapes ]
+
+    counter = 0
+    for (k,(Nx,Ny)) in enumerate(shapes):
+        F[k] = np.reshape(array[counter:(counter+Nx*Ny)], (Nx, Ny))
+        counter += Nx*Ny
+
+    return F
 
 
 class Multiblock:
