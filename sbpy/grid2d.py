@@ -74,7 +74,7 @@ def get_center(X,Y):
     return 0.25*(corners[0] + corners[1] + corners[2] + corners[3])
 
 
-def array_to_multiblock_function(grid, array):
+def array_to_multiblock(grid, array):
     """ Converts a flat array to a multiblock function. """
     shapes = grid.get_shapes()
     F = [ np.zeros(shape) for shape in shapes ]
@@ -85,6 +85,11 @@ def array_to_multiblock_function(grid, array):
         counter += Nx*Ny
 
     return F
+
+
+def multiblock_to_array(grid, F):
+    """ Converts a multiblock function to a flat array. """
+    return np.array(F).flatten()
 
 
 class Multiblock:
@@ -214,7 +219,17 @@ class Multiblock:
 
 
     def get_blocks(self):
+        """ Returns a list of matrix pairs (X,Y) representing grid blocks. """
         return self.blocks
+
+
+    def is_shape_consistent(self, F):
+        """ Check if a multiblock function F is shape consistent with grid. """
+        is_consistent = True
+        for (k,f) in enumerate(F):
+            if F[k].shape != self.shapes[k]:
+                is_consistent = False
+        return is_consistent
 
 
     def get_boundary_slice(self,k,side):

@@ -6,6 +6,23 @@ from scipy import integrate
 from sbpy import operators
 from sbpy import grid2d
 from scipy.stats import norm
+import tqdm
+
+def solve_ivp_pbar(tspan):
+    def decorator(f):
+        def new_f(t,y):
+            if t - new_f.prev_t > (tspan[1]-tspan[0])/100:
+                new_f.pbar.n += 1
+                new_f.prev_t = t
+                new_f.pbar.refresh()
+            return f(t,y)
+
+        new_f.pbar = tqdm.tqdm(total=100)
+        new_f.prev_t = tspan[0]
+
+        return new_f
+    return decorator
+
 
 class TestSolver:
     """ A linear scalar advection solver. """
@@ -66,7 +83,7 @@ class AdvectionSolver:
     """ A multiblock linear scalar advection solver. Currently assumes same
     resolution in all blocks. """
 
-    def __init__(self, grid):
+    def __init__(self, grid, **kwargs):
         self.grid = grid
         self.velocity = np.array([1.0,1.0])
         self.ops = []
@@ -74,6 +91,10 @@ class AdvectionSolver:
         self.Ux = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Uy = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ut = [ np.zeros(shape) for shape in grid.get_shapes() ]
+
+        if 'initial_data' in kwargs:
+            assert(grid.is_shape_consistent(kwargs['initial_data']))
+            self.U = kwargs['initial_data']
 
         for (X,Y) in grid.get_blocks():
             self.ops.append(operators.SBP2D(X,Y))
@@ -116,6 +137,7 @@ class AdvectionSolver:
         b = self.velocity[1]
         self.Ut = [ -(a*ux + b*uy) for (ux,uy) in zip(self.Ux, self.Uy) ]
 
+        # Add interface penalties
         for (local_idx, interfaces) in enumerate(self.grid.get_interfaces()):
             for interface in interfaces.items():
                 local_side    = interface[0]
@@ -130,6 +152,7 @@ class AdvectionSolver:
                 bd_slice      = self.grid.get_boundary_slice(local_idx, local_side)
                 self.Ut[local_idx][bd_slice] += sigma*(local_bd-neighbor_bd)
 
+        # Add external boundary penalties
         for (block_idx, ext_bds) in enumerate(self.grid.get_external_boundaries()):
             for side in ext_bds:
                 sol     = grid2d.get_function_boundary(self.U[block_idx], side)
@@ -138,18 +161,19 @@ class AdvectionSolver:
                 self.Ut[block_idx][bd_slice] += sigma*sol
 
 
-    def solve(self):
-        init = np.ones((4,50,50))
-        for (k, (X,Y)) in enumerate(self.grid.get_blocks()):
-            init[k,:,:] = 0.1*norm.pdf(Y,loc=0.0,scale=0.05) \
-                             *norm.pdf(X,loc=-0.6,scale=0.05)
-        T = 1.0
+    def solve(self, tspan):
+        init = grid2d.multiblock_to_array(self.grid, self.U)
+
+        @solve_ivp_pbar(tspan)
         def f(t, y):
-            U = grid2d.array_to_multiblock_function(self.grid, y)
-            #self.update_sol(np.reshape(y,(4,50,50)))
+            U = grid2d.array_to_multiblock(self.grid, y)
             self.update_sol(U)
             self.compute_spatial_derivatives()
             self.compute_temporal_derivative()
+
             return np.concatenate([ ut.flatten() for ut in self.Ut ])
 
-        self.sol = integrate.solve_ivp(f, (0.0, T), init.flatten())
+        eval_pts = np.linspace(tspan[0], tspan[1], int(30*(tspan[1]-tspan[0])))
+        self.sol = integrate.solve_ivp(f, tspan, init,
+                                       rtol=1e-12, atol=1e-12,
+                                       t_eval=eval_pts)
