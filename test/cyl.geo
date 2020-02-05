@@ -95,28 +95,28 @@ Transfinite Surface {3} = {4, 8, 7, 3};
 //+
 Transfinite Surface {4} = {1, 9, 8, 4};
 //+
-Transfinite Curve {1} = 250 Using Progression 1;
+Transfinite Curve {1}  = 161 Using Progression 1;
 //+
-Transfinite Curve {6} = 250 Using Progression 1;
+Transfinite Curve {6}  = 161 Using Progression 1;
 //+
-Transfinite Curve {12} = 250 Using Progression 1;
+Transfinite Curve {12} = 161 Using Progression 1;
 //+
-Transfinite Curve {5} = 250 Using Progression 1;
+Transfinite Curve {5}  = 161 Using Progression 1;
 //+
-Transfinite Curve {2} = 250 Using Progression 1;
+Transfinite Curve {2}  = 161 Using Progression 1;
 //+
-Transfinite Curve {7} = 250 Using Progression 1;
+Transfinite Curve {7}  = 161 Using Progression 1;
 //+
-Transfinite Curve {9} = 250 Using Progression 1;
+Transfinite Curve {9}  = 161 Using Progression 1;
 //+
-Transfinite Curve {3} = 250 Using Progression 1;
+Transfinite Curve {3}  = 161 Using Progression 1;
 //+
-Transfinite Curve {10} = 250 Using Progression 1;
+Transfinite Curve {10} = 161 Using Progression 1;
 //+
-Transfinite Curve {8} = 250 Using Progression 1;
+Transfinite Curve {8}  = 161 Using Progression 1;
 //+
-Transfinite Curve {4} = 250 Using Progression 1;
+Transfinite Curve {4}  = 161 Using Progression 1;
 //+
-Transfinite Curve {11} = 250 Using Progression 1;
+Transfinite Curve {11} = 161 Using Progression 1;
 //+
 Recombine Surface {1, 2, 3, 4};

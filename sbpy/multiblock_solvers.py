@@ -9,6 +9,21 @@ from scipy.stats import norm
 import tqdm
 
 def solve_ivp_pbar(tspan):
+    """ Returns a decorator used with solve_ivp to get a progress bar.
+
+    Args:
+        tspan: The tspan argument passed to solve_ivp
+
+    Example:
+        tspan = (0.0, 1.5)
+
+        @solve_ivp_bar(tspan)
+        def f(t,y):
+            ...
+            return y_derivative
+
+        sol = solve_ivp(f, tspan, some_initial_data)
+    """
     def decorator(f):
         def new_f(t,y):
             if t - new_f.prev_t > (tspan[1]-tspan[0])/100:
@@ -24,68 +39,12 @@ def solve_ivp_pbar(tspan):
     return decorator
 
 
-class TestSolver:
-    """ A linear scalar advection solver. """
-
-    def __init__(self, X, Y):
-        self.X = X
-        self.Y = Y
-        self.ops = operators.SBP2D(X,Y)
-        self.velocity = np.array([1.0,0.0])
-        self.inflow = {}
-        self.Nx, self.Ny = X.shape
-        for side in {'s', 'e', 'n', 'w'}:
-            bd = self.ops.normals[side]
-            inflow = np.array([ self.velocity@n < 0 for n in bd ],
-                              dtype = bool)
-            self.inflow[side] = inflow
-
-
-    def Dt(self, U):
-        Ut = np.zeros(shape=U.shape)
-        Ux = self.ops.diffx(U)
-        Uy = self.ops.diffy(U)
-
-        Ut[:,:] = -(self.velocity[0]*Ux+self.velocity[1]*Uy)
-
-        for side in ['s', 'e', 'n', 'w']:
-            pinv    = self.ops.pinv[side]
-            bd_quad = self.ops.boundary_quadratures[side]
-            in_vel  = -self.ops.normals[side]@self.velocity
-            sol     = grid2d.get_function_boundary(U, side)
-            sigma   = -0.5*in_vel*pinv*bd_quad*self.inflow[side]
-            if side == 's':
-                Ut[:,0] += sigma*sol
-            elif side == 'e':
-                Ut[-1,:] += sigma*sol
-            elif side == 'n':
-                Ut[:,-1] += sigma*sol
-            elif side == 'w':
-                Ut[0,:] += sigma*sol
-
-        return Ut
-
-    def solve(self):
-        #init = np.ones((self.Nx,self.Ny))
-        init = 0.1*norm.pdf(self.Y,loc=0.0,scale=0.05) \
-                  *norm.pdf(self.X,loc=-0.6,scale=0.05)
-
-        T = 1.0
-        def f(t, y):
-            y = np.reshape(y,(self.Nx,self.Ny))
-            yt = self.Dt(y)
-            return yt.flatten()
-
-        self.sol = integrate.solve_ivp(f, (0.0, T), init.flatten())
-
-
 class AdvectionSolver:
-    """ A multiblock linear scalar advection solver. Currently assumes same
-    resolution in all blocks. """
+    """ A multiblock linear scalar advection solver. """
 
     def __init__(self, grid, **kwargs):
         self.grid = grid
-        self.velocity = np.array([1.0,1.0])
+        self.t = 0
         self.ops = []
         self.U  = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ux = [ np.zeros(shape) for shape in grid.get_shapes() ]
@@ -95,6 +54,21 @@ class AdvectionSolver:
         if 'initial_data' in kwargs:
             assert(grid.is_shape_consistent(kwargs['initial_data']))
             self.U = kwargs['initial_data']
+
+        if 'boundary_data' in kwargs:
+            self.boundary_data = kwargs['boundary_data']
+        else:
+            self.boundary_data = None
+
+        if 'source_term' in kwargs:
+            self.source_term = kwargs['source_term']
+        else:
+            self.source_term = None
+
+        if 'velocity' in kwargs:
+            self.velocity = kwargs['velocity']
+        else:
+            self.velocity = np.array([1.0,1.0])
 
         for (X,Y) in grid.get_blocks():
             self.ops.append(operators.SBP2D(X,Y))
@@ -123,19 +97,24 @@ class AdvectionSolver:
                         -0.5*in_vel*pinv*bd_quad*self.inflow[block_idx][side]
 
 
-    def update_sol(self, U):
+    def _update_sol(self, U):
         self.U = U
 
 
-    def compute_spatial_derivatives(self):
+    def _compute_spatial_derivatives(self):
         self.Ux = self.grid.diffx(self.U)
         self.Uy = self.grid.diffy(self.U)
 
 
-    def compute_temporal_derivative(self):
+    def _compute_temporal_derivative(self):
         a = self.velocity[0]
         b = self.velocity[1]
         self.Ut = [ -(a*ux + b*uy) for (ux,uy) in zip(self.Ux, self.Uy) ]
+
+        if self.source_term is not None:
+            for (k,(X,Y)) in enumerate(self.grid.get_blocks()):
+                self.Ut[k] += self.source_term(self.t, X, Y)
+
 
         # Add interface penalties
         for (local_idx, interfaces) in enumerate(self.grid.get_interfaces()):
@@ -158,7 +137,13 @@ class AdvectionSolver:
                 sol     = grid2d.get_function_boundary(self.U[block_idx], side)
                 sigma   = self.penalty_coeffs[block_idx][side]
                 bd_slice = self.grid.get_boundary_slice(block_idx, side)
-                self.Ut[block_idx][bd_slice] += sigma*sol
+                if self.boundary_data is not None:
+                    (X,Y) = self.grid.get_block(block_idx)
+                    (x,y) = grid2d.get_boundary(X,Y,side)
+                    self.Ut[block_idx][bd_slice] += \
+                            sigma*(sol-self.boundary_data(self.t,x,y))
+                else:
+                    self.Ut[block_idx][bd_slice] += sigma*sol
 
 
     def solve(self, tspan):
@@ -167,9 +152,10 @@ class AdvectionSolver:
         @solve_ivp_pbar(tspan)
         def f(t, y):
             U = grid2d.array_to_multiblock(self.grid, y)
-            self.update_sol(U)
-            self.compute_spatial_derivatives()
-            self.compute_temporal_derivative()
+            self.t = t
+            self._update_sol(U)
+            self._compute_spatial_derivatives()
+            self._compute_temporal_derivative()
 
             return np.concatenate([ ut.flatten() for ut in self.Ut ])
 

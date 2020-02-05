@@ -175,8 +175,15 @@ class SBP2D:
 
 
     def diffx(self, u):
-        return np.reshape(self.Dx*u.flatten(), (self.Nx, self.Ny))
+        """ Differentiates a grid function with respect to x. """
+        return np.reshape(self.Dx@u.flatten(), (self.Nx, self.Ny))
 
 
     def diffy(self, u):
-        return np.reshape(self.Dy*u.flatten(), (self.Nx, self.Ny))
+        """ Differentiates a grid function with respect to y. """
+        return np.reshape(self.Dy@u.flatten(), (self.Nx, self.Ny))
+
+
+    def integrate(self, u):
+        """ Integrates a grid function over the domain. """
+        return np.sum(self.P@u.flatten())

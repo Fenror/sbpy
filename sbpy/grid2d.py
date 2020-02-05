@@ -223,6 +223,11 @@ class Multiblock:
         return self.blocks
 
 
+    def get_block(self, k):
+        """ Returns a matrix pair (X,Y) representing the k:th block. """
+        return self.blocks[k]
+
+
     def is_shape_consistent(self, F):
         """ Check if a multiblock function F is shape consistent with grid. """
         is_consistent = True
@@ -372,6 +377,11 @@ class MultiblockSBP(Multiblock):
     def diffy(self, U):
         """ Differentiates a Multiblock function with respect to y. """
         return [ self.sbp_ops[i].diffy(U[i]) for i in range(self.num_blocks) ]
+
+    def integrate(self, U):
+        """ Integrates a Multiblock function over the domain. """
+        return sum([ self.sbp_ops[i].integrate(U[i]) for
+                     i in range(self.num_blocks) ])
 
 
 def load_p3d(filename):
