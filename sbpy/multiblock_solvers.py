@@ -26,8 +26,9 @@ def solve_ivp_pbar(tspan):
     """
     def decorator(f):
         def new_f(t,y):
-            if t - new_f.prev_t > (tspan[1]-tspan[0])/100:
-                new_f.pbar.n += 1
+            if t - new_f.prev_t > (tspan[1]-tspan[0])/100 and t < tspan[1]:
+                progress = (t-tspan[0])/(tspan[1]-tspan[0])*100
+                new_f.pbar.n = int(np.ceil(progress))
                 new_f.prev_t = t
                 new_f.pbar.refresh()
             return f(t,y)

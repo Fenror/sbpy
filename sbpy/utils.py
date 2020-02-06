@@ -1,3 +1,5 @@
+""" This module contains various utility functions. """
+
 import numpy as np
 
 def create_convergence_table(labels, errors, h, title=None, filename=None):

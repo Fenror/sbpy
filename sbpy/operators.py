@@ -8,38 +8,62 @@ import matplotlib.pyplot as plt
 class SBP1D:
     """ Class representing a 1D finite difference SBP operator. """
 
-    def __init__(self, N, dx):
+    def __init__(self, N, dx, accuracy = 2):
         """ Initializes an SBP1D object.
 
         Args:
             N: The number of grid points.
             dx: The spacing between the grid points.
+            accuracy: The accuracy of the interior stencil (2 or 4)
         """
+
+        assert(accuracy in [2,4])
 
         self.N  = N
         self.dx = dx
 
-        stencil = np.array([-0.5, 0.0, 0.5])
-        MID = sparse.diags(stencil,
-                           [0, 1, 2],
-                           shape=(N-2, N))
+        if accuracy == 2:
+            stencil = np.array([-0.5, 0.0, 0.5])
+            MID = sparse.diags(stencil,
+                               [0, 1, 2],
+                               shape=(N-2, N))
 
-        TOP = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [0, 1])),
-                                shape=(1, N))
-        BOT = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [N-2, N-1])),
-                                shape=(1, N))
+            TOP = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [0, 1])),
+                                    shape=(1, N))
+            BOT = sparse.bsr_matrix(([-0.5, 0.5], ([0, 0], [N-2, N-1])),
+                                    shape=(1, N))
 
-        self.Q = sparse.vstack([TOP, MID, BOT])
+            self.Q = sparse.vstack([TOP, MID, BOT])
 
-        p     = np.ones(self.N)
-        p     = dx*p
-        p[0]  = 0.5*dx
-        p[-1] = 0.5*dx
-        p_inv = 1/p
+            p     = np.ones(self.N)
+            p     = dx*p
+            p[0]  = 0.5*dx
+            p[-1] = 0.5*dx
+            p_inv = 1/p
+
+        if accuracy == 4:
+            h1=17/48
+            h2=59/48
+            h3=43/48
+            h4=49/48
+            q1=1/12
+            q2=2/3
+            Q = sparse.diags([(N-2)*[q1], (N-1)*[-q2], N*[0], (N-1)*[q2], (N-2)*[-q1]],
+                             [-2,-1,0,1,2])
+            Q = Q.tolil()
+            Q[:4,:4] = [[-1/2  , 59/96 , -1/12 , -1/32],
+                        [-59/96, 0     , 59/96 , 0    ],
+                        [1/12  , -59/96, 0     , 59/96],
+                        [1/32  , 0     , -59/96, 0    ]]
+            Q[-4:,-4:] = -np.rot90(Q[:4,:4].todense(), k=2)
+            self.Q = Q
+            p = dx*np.concatenate([[h1,h2,h3,h4], np.ones(N-8), [h4, h3, h2, h1]])
+            p_inv = 1/p
+
 
         self.P = sparse.diags([p], [0])
         self.P_inv = sparse.diags([p_inv], [0])
-        self.D = self.P_inv*self.Q
+        self.D = self.P_inv@self.Q
 
 
 class SBP2D:
@@ -56,15 +80,19 @@ class SBP2D:
                  For example, normals['w']
     """
 
-    def __init__(self, X, Y):
+    def __init__(self, X, Y, accuracy = 2):
         """ Initializes an SBP2D object.
 
         Args:
             X: The x-values of the grid nodes.
             Y: The y-values of the grid nodes.
 
+        Optional:
+            accuracy: The accuracy of the interior stencils (2 or 4).
+
         """
         assert(X.shape == Y.shape)
+        assert(accuracy in [2,4])
 
         self.X = X
         self.Y = Y
@@ -72,8 +100,8 @@ class SBP2D:
 
         self.Ix      = sparse.eye(self.Nx)
         self.Iy      = sparse.eye(self.Ny)
-        self.sbp_xi  = SBP1D(self.Nx, 1/(self.Nx-1))
-        self.sbp_eta = SBP1D(self.Ny, 1/(self.Ny-1))
+        self.sbp_xi  = SBP1D(self.Nx, 1/(self.Nx-1), accuracy)
+        self.sbp_eta = SBP1D(self.Ny, 1/(self.Ny-1), accuracy)
         self.dx_dxi  = self.sbp_xi.D @ X
         self.dx_deta = X @ np.transpose(self.sbp_eta.D)
         self.dy_dxi  = self.sbp_xi.D @ Y

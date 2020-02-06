@@ -360,13 +360,19 @@ class Multiblock:
 
 class MultiblockSBP(Multiblock):
     """ A class combining Multiblock functionality and SBP2D functionality. """
-    def __init__(self, blocks):
+    def __init__(self, blocks, accuracy = 2):
+        """ Initializes a MultiblockSBP object.
+        Args:
+            blocks: A list of matrix pairs representing the blocks.
+        Optional:
+            accuracy: The interior accuracy of the difference operators (2 or 4).
+        """
         super().__init__(blocks)
 
         # Create SBP2D objects for each block.
         self.sbp_ops = []
         for (X,Y) in self.get_blocks():
-            self.sbp_ops.append(operators.SBP2D(X,Y))
+            self.sbp_ops.append(operators.SBP2D(X,Y,accuracy))
 
 
     def diffx(self, U):

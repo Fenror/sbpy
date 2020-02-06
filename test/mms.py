@@ -40,12 +40,13 @@ def F(t,x,y):
 
 
 errs = []
-resolutions = [11, 21, 41, 81, 161]
-h = [1/10, 1/20, 1/40, 1/80, 1/160]
+resolutions = np.array([11, 21, 41, 81, 161])
+h = 1/(resolutions-1)
 
 for N in resolutions:
-    blocks = grid2d.load_p3d('cyl' + str(N) + '.p3d')
-    grid = grid2d.MultiblockSBP(blocks)
+    #blocks = grid2d.load_p3d('cyl' + str(N) + '.p3d')
+    blocks = [get_bump(N)]
+    grid = grid2d.MultiblockSBP(blocks, accuracy=4)
     init = [ np.ones(shape) for shape in grid.get_shapes() ]
 
     for (k, (X,Y)) in enumerate(grid.get_blocks()):
