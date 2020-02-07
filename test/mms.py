@@ -29,6 +29,29 @@ def get_bump(N):
     return X,Y
 
 
+def get_pizza(N, th0, th1, r_inner, r_outer):
+    d_r = (r_outer - r_inner)/(N-1)
+    d_th = (th1-th0)/(N-1)
+
+    radii = np.linspace(r_inner, r_outer, N)
+    thetas = np.linspace(th0, th1, N)
+
+    x = np.zeros(N*N)
+    y = np.zeros(N*N)
+
+    pos = 0
+    for r in radii:
+        for th in thetas:
+            x[pos] = r*np.cos(th)
+            y[pos] = r*np.sin(th)
+            pos += 1
+
+    X = np.reshape(x,(N,N))
+    Y = np.reshape(y,(N,N))
+
+    return X,Y
+
+
 def u(t,x,y):
     return np.sin(x+y+t)
 
@@ -45,7 +68,11 @@ h = 1/(resolutions-1)
 
 for N in resolutions:
     #blocks = grid2d.load_p3d('cyl' + str(N) + '.p3d')
-    blocks = [get_bump(N)]
+    blocks = [get_pizza(N, 0, 0.5*np.pi, 0.2, 1.0),
+              get_pizza(N, 0.5*np.pi, np.pi, 0.2, 1.0),
+              get_pizza(N, np.pi, 1.5*np.pi, 0.2, 1.0),
+              get_pizza(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+    grid2d.collocate_corners(blocks)
     grid = grid2d.MultiblockSBP(blocks, accuracy=4)
     init = [ np.ones(shape) for shape in grid.get_shapes() ]
 

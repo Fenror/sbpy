@@ -27,6 +27,18 @@ rc('text', usetex=True)
 
 from sbpy import operators
 
+
+def collocate_corners(blocks, tol=1e-15):
+    """ Collocate corners of blocks if they are equal up to some tolerance. """
+    for ((X1,Y1),(X2,Y2)) in itertools.combinations(blocks,2):
+        for (c1,c2) in itertools.product([(0,0),(-1,0),(-1,-1),(0,-1)], repeat=2):
+            if np.abs(X1[c1]-X2[c2]) < tol and np.abs(Y1[c1]-Y2[c2]) < tol:
+                X1[c1] = X2[c2]
+                Y1[c1] = Y2[c2]
+
+
+
+
 def get_boundary(X,Y,side):
     """ Returns the boundary of a block. """
 
