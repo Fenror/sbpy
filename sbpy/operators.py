@@ -69,15 +69,19 @@ class SBP1D:
 class SBP2D:
     """ Class representing 2D finite difference SBP operators.
 
-    This class defines 2D curvilinear SBP operators on a supplied grid X, Y.
-    Here X and Y are 2D numpy arrays representing the x- and y-values of the
-    grid. X and Y should be structured such that (X[i,j], Y[i,j]) is equal to
-    the (i,j):th grid node (x_ij, y_ij).
+    This class defines 2D curvilinear SBP operators on a supplied grid X, Y,
+    based on Ålund & Nordström (JCP, 2019).  Here X and Y are 2D numpy arrays
+    representing the x- and y-values of the grid. X and Y should be structured
+    such that (X[i,j], Y[i,j]) is equal to the (i,j):th grid node (x_ij, y_ij).
 
     Attributes:
         normals: A dictionary containing the normals for each boundary. The keys
-                 are 's' for south, 'e' for east, 'n' for north, 'w' for west.
-                 For example, normals['w']
+            are 's' for south, 'e' for east, 'n' for north, 'w' for west.
+            For example, normals['w']
+        boundary_quadratures: A dictionary containing boundary quadratures for
+            each boundary. I.e. arrays of weights that can be used to compute
+            integrals over the boundaries.
+        volume_quadrature: A matrix representing a quadrature over the domain.
     """
 
     def __init__(self, X, Y, accuracy = 2):
@@ -112,7 +116,7 @@ class SBP2D:
                          's': np.array([[x,y] for x,y in zip(X[:,0], Y[:, 0])]),
                          'n': np.array([[x,y] for x,y in zip(X[:,-1], Y[:,-1])])}
 
-        """ Construct 2D SBP operators. """
+        # Construct 2D SBP operators.
         self.J    = sparse.diags(self.jac.flatten())
         self.Jinv = sparse.diags(1/self.jac.flatten())
         self.Xxi  = sparse.diags(self.dx_dxi.flatten())
@@ -131,7 +135,12 @@ class SBP2D:
                                    self.Dxi @ self.Xeta)
         self.P = self.J@sparse.kron(self.sbp_xi.P, self.sbp_eta.P)
 
-        """ Construct boundary quadratures. """
+        # Save matrix version of volume quadrature.
+        self.volume_quadrature = np.reshape(np.diag(self.P.todense()),
+                                            (self.Nx, self.Ny))
+
+
+        # Construct boundary quadratures.
         self.boundary_quadratures = {}
         self.pxi = np.diag(self.sbp_xi.P.todense())
         self.peta = np.diag(self.sbp_eta.P.todense())
@@ -156,13 +165,13 @@ class SBP2D:
         self.boundary_quadratures['n'] = \
                 self.pxi*np.sqrt(dx_dxi_n**2 + dy_dxi_n**2)
 
-        """ Construct P^(-1) at boundaries. """
+        # Construct P^(-1) at boundaries.
         self.pinv = {}
         for side in ['s','e','n','w']:
             self.pinv[side] = 1/grid2d.get_function_boundary(
                     self.jac*np.outer(self.pxi, self.peta), side)
 
-        """ Compute normals. """
+        # Compute normals.
         self.normals = {}
         self.normals['w'] = \
             np.array([ np.array([-nx, ny])/np.linalg.norm([nx, ny]) for

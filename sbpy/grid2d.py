@@ -109,34 +109,39 @@ class Multiblock:
 
     Attributes:
         blocks: A list of pairs of 2D numpy arrays containing x- and y-values for
-                each block.
+            each block.
+
+        block_interfaces: A list of dictionaries containing the interfaces for each
+            block. For example, if interfaces[i] = {'n': (j, 'w')}, then
+            the northern boundary of the block i coincides with the
+            western boundary of the western boundary of block j.
 
         corners: A list of unique corners in the grid.
 
         edges: A list pairs of indices to the corners list, defining all the
-               unique edges in grid connectivity graph.
+            unique edges in grid connectivity graph.
 
         faces: A list of index-quadruples defining the blocks. For example, if
-               faces[n] = [i,j,k,l], and (X,Y) are the matrices corresponding to
-               block n, then (X[0,0],Y[0,0]) = corners[i]
-                             (X[-1,0],Y[-1,0]) = corners[j]
-                             (X[-1,-1],Y[-1,-1]) = corners[k]
-                             (X[0,-1],Y[0,-1]) = corners[l]
+            faces[n] = [i,j,k,l], and (X,Y) are the matrices corresponding to
+            block n, then (X[0,0],Y[0,0]) = corners[i]
+                          (X[-1,0],Y[-1,0]) = corners[j]
+                          (X[-1,-1],Y[-1,-1]) = corners[k]
+                          (X[0,-1],Y[0,-1]) = corners[l]
 
         face_edges: A list of dicts specifying the edges of each face in the
-                    grid connectivity graph. For example, if
-                    face_edges[n] = {'s': 1, 'e': 5, 'n': 3, 'w': 0}, then the
-                    southern boundary of the n:th face is edge 1, and so on.
+            grid connectivity graph. For example, if
+            face_edges[n] = {'s': 1, 'e': 5, 'n': 3, 'w': 0}, then the
+            southern boundary of the n:th face is edge 1, and so on.
 
-        interfaces: A list of dictionaries containing the interfaces for each
-                    block. For example, if interfaces[i] = {'n': (j, 'w')}, then
-                    the northern boundary of the block i coincides with the
-                    western boundary of the western boundary of block j.
+        interfaces: A list of pairs of the form ( (k1, s1), (k2, s2) ), where
+            k1, k2 are the indices of the blocks connected to the interface, and
+            s1, s2 are the sides of the respective blocks that make up the
+            interface.
 
         non_interfaces: A list of lists specifying the non-interfaces of each
-                        block. For example, if non_interfaces[i] = ['w', 'n'],
-                        then the western and northern sides of block i are not
-                        interfaces.
+            block. For example, if non_interfaces[i] = ['w', 'n'],
+            then the western and northern sides of block i are not
+            interfaces.
 
         num_blocks: The total number of blocks in the grid.
 
@@ -204,14 +209,26 @@ class Multiblock:
                     np.argwhere(np.all(edge == self.edges, axis=1)).item()
 
         # Find interfaces
-        self.interfaces = [{} for _ in range(self.num_blocks)]
+        self.block_interfaces = [{} for _ in range(self.num_blocks)]
         for ((i,edges1), (j,edges2)) in \
         itertools.combinations(enumerate(self.face_edges),2):
             for (side1,side2) in \
             itertools.product(['s', 'e', 'n', 'w'], repeat=2):
                 if edges1[side1] == edges2[side2]:
-                    self.interfaces[i][side1] = (j, side2)
-                    self.interfaces[j][side2] = (i, side1)
+                    self.block_interfaces[i][side1] = (j, side2)
+                    self.block_interfaces[j][side2] = (i, side1)
+
+        self.interfaces = []
+        for k in range(len(self.edges)):
+            blocks = []
+            sides = []
+            for n in range(self.num_blocks):
+                for side in ['w','s','n','e']:
+                    if self.face_edges[n][side] == k:
+                        blocks.append(n)
+                        sides.append(side)
+            if len(blocks) == 2:
+                self.interfaces.append(((blocks[0],sides[0]),(blocks[1],sides[1])))
 
         # Find non-interfaces
         self.non_interfaces = [[] for _ in range(self.num_blocks)]
@@ -273,12 +290,20 @@ class Multiblock:
 
 
     def get_interfaces(self):
+        """ Returns a list of pairs of the form ( (k1, s1), (k2, s2) ), where
+            k1, k2 are the indices of the blocks connected to the interface, and
+            s1, s2 are the sides of the respective blocks that make up the
+            interface. """
+        return self.interfaces()
+
+
+    def get_block_interfaces(self):
         """ Returns a list of dictionaries containing the interfaces for each
-        block. For example, if interfaces = get_interfaces(), and
+        block. For example, if interfaces = get_block_interfaces(), and
         interfaces[i] = {'n': (j, 'w')}, then the northern boundary of the block
         i coincides with the western boundary of the western boundary of block j.
         """
-        return self.interfaces
+        return self.block_interfaces
 
 
     def get_external_boundaries(self):
@@ -300,7 +325,7 @@ class Multiblock:
 
         Returns True if the given side of the given block is an interface. """
 
-        if side in self.interfaces[block_idx]:
+        if side in self.block_interfaces[block_idx]:
             return True
         else:
             return False
@@ -355,7 +380,7 @@ class Multiblock:
         """
         assert(self.is_interface(block_idx, side))
 
-        neighbor_idx, neighbor_side = self.interfaces[block_idx][side]
+        neighbor_idx, neighbor_side = self.block_interfaces[block_idx][side]
 
         flip = False
         if (neighbor_side, side) in [('s','e'), ('s','s'),
@@ -371,7 +396,11 @@ class Multiblock:
 
 
 class MultiblockSBP(Multiblock):
-    """ A class combining Multiblock functionality and SBP2D functionality. """
+    """ A class combining Multiblock functionality and SBP2D functionality.
+
+    Attributes:
+        sbp_ops: A list of SBP2D object corresponding to each block.
+    """
     def __init__(self, blocks, accuracy = 2):
         """ Initializes a MultiblockSBP object.
         Args:
@@ -400,6 +429,10 @@ class MultiblockSBP(Multiblock):
         """ Integrates a Multiblock function over the domain. """
         return sum([ self.sbp_ops[i].integrate(U[i]) for
                      i in range(self.num_blocks) ])
+
+    def get_normals(self, block_idx, side):
+        """ Get the normals of a specified side of a particular block. """
+        return self.sbp_ops[block_idx].normals[side]
 
 
 def load_p3d(filename):
