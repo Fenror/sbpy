@@ -56,3 +56,37 @@ def create_convergence_table(labels, errors, h, title=None, filename=None):
             f.write("\hline\n")
             f.write("\\end{tabular}\n\n")
 
+
+def get_circle_sector_grid(N, th0, th1, r_inner, r_outer):
+    """ Returns a circle sector grid.
+
+    Arguments:
+        N: Number of gridpoints in each direction.
+        th0: Start angle.
+        th1: End angle.
+        r_inner: Inner radius.
+        r_outer: Outer radius.
+
+    Returns:
+        (X,Y): A pair of matrices defining the grid.
+    """
+    d_r = (r_outer - r_inner)/(N-1)
+    d_th = (th1-th0)/(N-1)
+
+    radii = np.linspace(r_inner, r_outer, N)
+    thetas = np.linspace(th0, th1, N)
+
+    x = np.zeros(N*N)
+    y = np.zeros(N*N)
+
+    pos = 0
+    for r in radii:
+        for th in thetas:
+            x[pos] = r*np.cos(th)
+            y[pos] = r*np.sin(th)
+            pos += 1
+
+    X = np.reshape(x,(N,N))
+    Y = np.reshape(y,(N,N))
+
+    return X,Y

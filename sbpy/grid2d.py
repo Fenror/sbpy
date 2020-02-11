@@ -28,6 +28,9 @@ rc('text', usetex=True)
 from sbpy import operators
 
 
+_SIDES = ['s', 'e', 'n', 'w']
+
+
 def collocate_corners(blocks, tol=1e-15):
     """ Collocate corners of blocks if they are equal up to some tolerance. """
     for ((X1,Y1),(X2,Y2)) in itertools.combinations(blocks,2):
@@ -237,9 +240,17 @@ class Multiblock:
             other_edges = \
                 np.array([ np.fromiter(other_edges.values(), dtype=float) for
                     (j, other_edges) in enumerate(self.face_edges) if j != i])
-            for side in ['s', 'e', 'n', 'w']:
+            for side in _SIDES:
                 if edges[side] not in other_edges.flatten():
                     self.non_interfaces[i].append(side)
+
+        # Find external boundaries
+        self.external_boundaries = []
+        for block_idx in range(self.num_blocks):
+            for side in _SIDES:
+                if not self.is_interface(block_idx, side):
+                    self.external_boundaries.append((block_idx, side))
+
 
 
     def evaluate_function(self, f):
@@ -294,7 +305,7 @@ class Multiblock:
             k1, k2 are the indices of the blocks connected to the interface, and
             s1, s2 are the sides of the respective blocks that make up the
             interface. """
-        return self.interfaces()
+        return self.interfaces
 
 
     def get_block_interfaces(self):
@@ -307,12 +318,13 @@ class Multiblock:
 
 
     def get_external_boundaries(self):
-        """ Returns a list of lists containing the external boundaries
-        for each block. For example, if bds = get_external_boundaries(), and
-        bds[k] = ['n', 'e'], then the northern and eastern boundaries of the
-        block k are external boundaries.
+        """ Returns a list of pairs defining the external boundaries of the
+        domain. For example, if ext_bds = get_external_boundaries(), then each
+        element of ext_bds is a pair of the form (k, side), where side = 'w', 'e'
+        's', or 'n', specifying a block and its side constituting an external
+        boundary.
         """
-        return self.non_interfaces
+        return self.external_boundaries
 
 
     def get_shapes(self):

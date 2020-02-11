@@ -8,6 +8,10 @@ from sbpy import grid2d
 from scipy.stats import norm
 import tqdm
 
+
+_SIDES = ['s', 'e', 'n', 'w']
+
+
 def solve_ivp_pbar(tspan):
     """ Returns a decorator used with solve_ivp to get a progress bar.
 
@@ -129,7 +133,7 @@ class AdvectionSolver:
                 self.Ut[local_idx][bd_slice] += sigma*(local_bd-neighbor_bd)
 
         # Add external boundary penalties
-        for (block_idx, ext_bds) in enumerate(self.grid.get_external_boundaries()):
+        for (block_idx, ext_bds) in enumerate(self.grid.non_interfaces):
             for side in ext_bds:
                 sol     = grid2d.get_function_boundary(self.U[block_idx], side)
                 sigma   = self.penalty_coeffs[block_idx][side]
@@ -169,7 +173,7 @@ class AdvectionDiffusionSolver:
     def __init__(self, grid, **kwargs):
         self.grid = grid
         self.t = 0
-        self.epsilon = 0.01
+        self.eps = 0.005
         self.U   = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ux  = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Uy  = [ np.zeros(shape) for shape in grid.get_shapes() ]
@@ -194,7 +198,7 @@ class AdvectionDiffusionSolver:
         if 'velocity' in kwargs:
             self.velocity = kwargs['velocity']
         else:
-            self.velocity = np.array([1.0,1.0])
+            self.velocity = np.array([1.0,0.1])/np.sqrt(2)
 
         # Save bool arrays determining inflows. For example, if inflow[k]['w'][j]
         # is True, then the j:th node of the western boundary of the k:th block
@@ -210,7 +214,7 @@ class AdvectionDiffusionSolver:
         # Compute interface alphas
         self.alphas = [ {} for _ in range(self.grid.num_blocks) ]
         for k in range(self.grid.num_blocks):
-            for side in ['s', 'e', 'n', 'w']:
+            for side in _SIDES:
                 self.alphas[k][side] = self._compute_alpha(k, side)
 
         # Save penalty coefficients for each interface
@@ -225,9 +229,9 @@ class AdvectionDiffusionSolver:
             flow_vel   = np.array([ self.velocity@n for n in normals ])
 
             pinv1 = self.grid.sbp_ops[block_idx1].pinv[side1]
-            bdquad1 = self.grid.sbp_ops[block_dx1].boundary_quadratures[side1]
+            bdquad1 = self.grid.sbp_ops[block_idx1].boundary_quadratures[side1]
             pinv2 = self.grid.sbp_ops[block_idx2].pinv[side2]
-            bdquad2 = self.grid.sbp_ops[block_dx2].boundary_quadratures[side2]
+            bdquad2 = self.grid.sbp_ops[block_idx2].boundary_quadratures[side2]
 
             alpha1 = self._compute_alpha(block_idx1, side1)
             alpha2 = self._compute_alpha(block_idx2, side2)
@@ -240,22 +244,22 @@ class AdvectionDiffusionSolver:
             self.inviscid_if_coeffs[block_idx1][side1] = \
                 s1_inviscid*pinv1*bdquad1*flow_vel
             self.inviscid_if_coeffs[block_idx2][side2] = \
-                -s2_inviscid*pinv2*bdquad2*flow_vel
+                s2_inviscid*pinv2*bdquad2*flow_vel
             self.viscid_if_coeffs[block_idx1][side1] = \
                 s1_viscid*self.eps*pinv1*bdquad1
             self.viscid_if_coeffs[block_idx2][side2] = \
                 s2_viscid*self.eps*pinv2*bdquad2
 
 
-    def _compute_alpha(block_idx, side):
+    def _compute_alpha(self, block_idx, side):
         vol_quad = self.grid.sbp_ops[block_idx].volume_quadrature
         vol_quad = grid2d.get_function_boundary(vol_quad, side)
         normals = self.grid.get_normals(block_idx, side)
         nx = normals[:,0]
         ny = normals[:,1]
         bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
-        alphas = np.concatenate([vol_quad/(nx**2 * bd_quad),
-                                 vol_quad/(ny**2 * bd_quad)])
+        alphas = np.concatenate([vol_quad/(nx**2 * bd_quad+1),
+                                 vol_quad/(ny**2 * bd_quad+1)])
         return 0.5*min(alphas)
 
 
@@ -266,12 +270,15 @@ class AdvectionDiffusionSolver:
     def _compute_spatial_derivatives(self):
         self.Ux = self.grid.diffx(self.U)
         self.Uy = self.grid.diffy(self.U)
+        self.Uxx = self.grid.diffx(self.Ux)
+        self.Uyy = self.grid.diffy(self.Uy)
 
 
     def _compute_temporal_derivative(self):
         a = self.velocity[0]
         b = self.velocity[1]
-        self.Ut = [ -(a*ux + b*uy) for (ux,uy) in zip(self.Ux, self.Uy) ]
+        self.Ut = [ -(a*ux + b*uy) + self.eps*(uxx + uyy) for (ux,uy,uxx,uyy) in
+                   zip(self.Ux, self.Uy, self.Uxx, self.Uyy) ]
 
         if self.source_term is not None:
             for (k,(X,Y)) in enumerate(self.grid.get_blocks()):
@@ -279,33 +286,50 @@ class AdvectionDiffusionSolver:
 
 
         # Add interface penalties
-        for (local_idx, interfaces) in enumerate(self.grid.get_block_interfaces()):
-            for interface in interfaces.items():
-                local_side    = interface[0]
-                neighbor_idx  = interface[1][0]
-                neighbor_side = interface[1][1]
-                local_u       = self.U[local_idx]
-                neighbor_u    = self.U[neighbor_idx]
-                local_bd      = grid2d.get_function_boundary(local_u, local_side)
-                neighbor_bd   = self.grid.get_neighbor_boundary(
-                                    neighbor_u, local_idx, local_side)
-                sigma         = self.penalty_coeffs[local_idx][local_side]
-                bd_slice      = self.grid.get_boundary_slice(local_idx, local_side)
-                self.Ut[local_idx][bd_slice] += sigma*(local_bd-neighbor_bd)
+        for ((idx1,side1),(idx2,side2)) in self.grid.get_interfaces():
+            bd_slice1 = self.grid.get_boundary_slice(idx1, side1)
+            bd_slice2 = self.grid.get_boundary_slice(idx2, side2)
+            u  = self.U[idx1][bd_slice1]
+            ux = self.Ux[idx1][bd_slice1]
+            uy = self.Uy[idx1][bd_slice1]
+            v  = self.U[idx1][bd_slice1]
+            vx = self.Ux[idx1][bd_slice1]
+            vy = self.Uy[idx1][bd_slice1]
+            normals = self.grid.get_normals(idx1, side1)
+            fluxu = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
+                             zip(ux,uy,normals)])
+            fluxv = np.array([vx*n1 + vy*n2 for (vx,vy,(n1,n2)) in
+                             zip(vx,vy,normals)])
+
+            s1_invisc = self.inviscid_if_coeffs[idx1][side1]
+            s1_visc = self.viscid_if_coeffs[idx1][side1]
+            s2_invisc = self.inviscid_if_coeffs[idx2][side2]
+            s2_visc = self.viscid_if_coeffs[idx2][side2]
+
+            self.Ut[idx1][bd_slice1] += s1_invisc*(u-v)
+            self.Ut[idx1][bd_slice1] += s1_visc*(fluxu - fluxv)
+            self.Ut[idx2][bd_slice2] += s2_invisc*(v-u)
+            self.Ut[idx2][bd_slice2] += s2_visc*(fluxv - fluxu)
+
 
         # Add external boundary penalties
-        for (block_idx, ext_bds) in enumerate(self.grid.get_external_boundaries()):
-            for side in ext_bds:
-                sol     = grid2d.get_function_boundary(self.U[block_idx], side)
-                sigma   = self.penalty_coeffs[block_idx][side]
-                bd_slice = self.grid.get_boundary_slice(block_idx, side)
-                if self.boundary_data is not None:
-                    (X,Y) = self.grid.get_block(block_idx)
-                    (x,y) = grid2d.get_boundary(X,Y,side)
-                    self.Ut[block_idx][bd_slice] += \
-                            sigma*(sol-self.boundary_data(self.t,x,y))
-                else:
-                    self.Ut[block_idx][bd_slice] += sigma*sol
+        for (block_idx, side) in self.grid.get_external_boundaries():
+            bd_slice = self.grid.get_boundary_slice(block_idx, side)
+            pinv = self.grid.sbp_ops[block_idx].pinv[side]
+            bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
+            inflow = self.inflow[block_idx][side]
+            outflow = np.invert(inflow)
+            sigma = pinv*bd_quad
+            u  = self.U[block_idx][bd_slice]
+            ux = self.Ux[block_idx][bd_slice]
+            uy = self.Uy[block_idx][bd_slice]
+            normals = self.grid.get_normals(block_idx, side)
+            flow_vel = np.array([ self.velocity@n for n in normals ])
+            flux = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
+                             zip(ux,uy,normals)])
+            self.Ut[block_idx][bd_slice] += -sigma*outflow*(self.eps*flux - 0)
+            self.Ut[block_idx][bd_slice] += \
+                    sigma*inflow*(flow_vel*u - self.eps*flux - 0)
 
 
     def solve(self, tspan):
@@ -321,7 +345,7 @@ class AdvectionDiffusionSolver:
 
             return np.concatenate([ ut.flatten() for ut in self.Ut ])
 
-        eval_pts = np.linspace(tspan[0], tspan[1], int(30*(tspan[1]-tspan[0])))
+        eval_pts = np.linspace(tspan[0], tspan[1], int(60*(tspan[1]-tspan[0])))
         self.sol = integrate.solve_ivp(f, tspan, init,
                                        rtol=1e-12, atol=1e-12,
                                        t_eval=eval_pts)
