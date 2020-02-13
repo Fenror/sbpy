@@ -220,34 +220,31 @@ class AdvectionDiffusionSolver:
         # Save penalty coefficients for each interface
         self.inviscid_if_coeffs = [ {} for _ in range(self.grid.num_blocks) ]
         self.viscid_if_coeffs = [ {} for _ in range(self.grid.num_blocks) ]
-        for interface in self.grid.get_interfaces():
-            block_idx1 = interface[0][0]
-            side1      = interface[0][1]
-            block_idx2 = interface[1][0]
-            side2      = interface[1][1]
-            normals    = grid.get_normals(block_idx1, side1)
+        for (idx1, side1), (idx2, side2) in self.grid.get_interfaces():
+            normals    = grid.get_normals(idx1, side1)
             flow_vel   = np.array([ self.velocity@n for n in normals ])
 
-            pinv1 = self.grid.sbp_ops[block_idx1].pinv[side1]
-            bdquad1 = self.grid.sbp_ops[block_idx1].boundary_quadratures[side1]
-            pinv2 = self.grid.sbp_ops[block_idx2].pinv[side2]
-            bdquad2 = self.grid.sbp_ops[block_idx2].boundary_quadratures[side2]
+            pinv1 = self.grid.sbp_ops[idx1].pinv[side1]
+            bdquad1 = self.grid.sbp_ops[idx1].boundary_quadratures[side1]
+            pinv2 = self.grid.sbp_ops[idx2].pinv[side2]
+            bdquad2 = self.grid.sbp_ops[idx2].boundary_quadratures[side2]
 
-            alpha1 = self._compute_alpha(block_idx1, side1)
-            alpha2 = self._compute_alpha(block_idx2, side2)
+            alpha1 = self.alphas[idx1][side1]
+            alpha2 = self.alphas[idx2][side2]
 
             s1_viscid = -1.0
             s2_viscid = 0.0
-            s1_inviscid = 0.5 - 0.25*self.eps*\
+            s1_inviscid = 0.5*flow_vel - 0.25*self.eps*\
                     (s1_viscid**2/alpha1 + s2_viscid**2/alpha2)
-            s2_inviscid = s1_inviscid - 1
-            self.inviscid_if_coeffs[block_idx1][side1] = \
-                s1_inviscid*pinv1*bdquad1*flow_vel
-            self.inviscid_if_coeffs[block_idx2][side2] = \
-                s2_inviscid*pinv2*bdquad2*flow_vel
-            self.viscid_if_coeffs[block_idx1][side1] = \
+            s2_inviscid = s1_inviscid - flow_vel
+
+            self.inviscid_if_coeffs[idx1][side1] = \
+                s1_inviscid*pinv1*bdquad1
+            self.inviscid_if_coeffs[idx2][side2] = \
+                s2_inviscid*pinv2*bdquad2
+            self.viscid_if_coeffs[idx1][side1] = \
                 s1_viscid*self.eps*pinv1*bdquad1
-            self.viscid_if_coeffs[block_idx2][side2] = \
+            self.viscid_if_coeffs[idx2][side2] = \
                 s2_viscid*self.eps*pinv2*bdquad2
 
 
@@ -260,7 +257,7 @@ class AdvectionDiffusionSolver:
         bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
         alphas = np.concatenate([vol_quad/(nx**2 * bd_quad+1),
                                  vol_quad/(ny**2 * bd_quad+1)])
-        return 0.5*min(alphas)
+        return 100*0.5*min(alphas) # TEMP HACK, SMTH WRONG WITH ALPHA
 
 
     def _update_sol(self, U):
@@ -292,9 +289,9 @@ class AdvectionDiffusionSolver:
             u  = self.U[idx1][bd_slice1]
             ux = self.Ux[idx1][bd_slice1]
             uy = self.Uy[idx1][bd_slice1]
-            v  = self.U[idx1][bd_slice1]
-            vx = self.Ux[idx1][bd_slice1]
-            vy = self.Uy[idx1][bd_slice1]
+            v  = self.U[idx2][bd_slice2]
+            vx = self.Ux[idx2][bd_slice2]
+            vy = self.Uy[idx2][bd_slice2]
             normals = self.grid.get_normals(idx1, side1)
             fluxu = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
                              zip(ux,uy,normals)])
@@ -302,9 +299,10 @@ class AdvectionDiffusionSolver:
                              zip(vx,vy,normals)])
 
             s1_invisc = self.inviscid_if_coeffs[idx1][side1]
-            s1_visc = self.viscid_if_coeffs[idx1][side1]
+            s1_visc   = self.viscid_if_coeffs[idx1][side1]
             s2_invisc = self.inviscid_if_coeffs[idx2][side2]
-            s2_visc = self.viscid_if_coeffs[idx2][side2]
+            s2_visc   = self.viscid_if_coeffs[idx2][side2]
+
 
             self.Ut[idx1][bd_slice1] += s1_invisc*(u-v)
             self.Ut[idx1][bd_slice1] += s1_visc*(fluxu - fluxv)

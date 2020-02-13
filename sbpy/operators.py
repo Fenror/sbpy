@@ -136,7 +136,7 @@ class SBP2D:
         self.P = self.J@sparse.kron(self.sbp_xi.P, self.sbp_eta.P)
 
         # Save matrix version of volume quadrature.
-        self.volume_quadrature = np.reshape(np.diag(self.P.todense()),
+        self.volume_quadrature = np.reshape(self.P.diagonal(),
                                             (self.Nx, self.Ny))
 
 
