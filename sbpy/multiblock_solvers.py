@@ -198,7 +198,7 @@ class AdvectionDiffusionSolver:
         if 'velocity' in kwargs:
             self.velocity = kwargs['velocity']
         else:
-            self.velocity = np.array([1.0,0.1])/np.sqrt(2)
+            self.velocity = np.array([1.0,-1.0])/np.sqrt(2)
 
         # Save bool arrays determining inflows. For example, if inflow[k]['w'][j]
         # is True, then the j:th node of the western boundary of the k:th block
@@ -255,9 +255,9 @@ class AdvectionDiffusionSolver:
         nx = normals[:,0]
         ny = normals[:,1]
         bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
-        alphas = np.concatenate([vol_quad/(nx**2 * bd_quad+1),
-                                 vol_quad/(ny**2 * bd_quad+1)])
-        return 100*0.5*min(alphas) # TEMP HACK, SMTH WRONG WITH ALPHA
+        alphas = np.concatenate([vol_quad/(nx**2 * bd_quad+1e-14),
+                                 vol_quad/(ny**2 * bd_quad+1e-14)])
+        return 0.5*min(alphas)
 
 
     def _update_sol(self, U):

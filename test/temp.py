@@ -13,16 +13,23 @@ from sbpy import utils
 
 #blocks = grid2d.load_p3d('cyl11.p3d')
 #grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-N = 50
+N = 30
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+#x1 = np.linspace(-1,0,N)
+#y1 = np.linspace(0,1,N)
+#x2 = np.linspace(0,1,N)
+#y2 = np.linspace(0,1,N)
+#X1,Y1 = np.meshgrid(x1,y1,indexing='ij')
+#X2,Y2 = np.meshgrid(x2,y2,indexing='ij')
+#blocks = [(X1,Y1),(X2,Y2)]
 grid2d.collocate_corners(blocks)
 grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 init = [ np.ones(shape) for shape in grid.get_shapes() ]
 for (k, (X,Y)) in enumerate(grid.get_blocks()):
-    init[k] = 0.02*norm.pdf(Y,loc=-0.5,scale=0.05)*norm.pdf(X,loc=-0.6,scale=0.05)
+    init[k] = 0.02*norm.pdf(X,loc=-0.5,scale=0.05)*norm.pdf(Y,loc=0.5,scale=0.05)
 
 def g(t,x,y):
     return np.sin(t)
