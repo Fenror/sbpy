@@ -215,7 +215,8 @@ class AdvectionDiffusionSolver:
         self.alphas = [ {} for _ in range(self.grid.num_blocks) ]
         for k in range(self.grid.num_blocks):
             for side in _SIDES:
-                self.alphas[k][side] = self._compute_alpha(k, side)
+                if grid.is_interface(k,side):
+                    self.alphas[k][side] = self._compute_alpha(k, side)
 
         # Save penalty coefficients for each interface
         self.inviscid_if_coeffs = [ {} for _ in range(self.grid.num_blocks) ]
@@ -255,9 +256,10 @@ class AdvectionDiffusionSolver:
         nx = normals[:,0]
         ny = normals[:,1]
         bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
-        alphas = np.concatenate([vol_quad/(nx**2 * bd_quad+1e-14),
-                                 vol_quad/(ny**2 * bd_quad+1e-14)])
-        return 0.5*min(alphas)
+        alpha1 = vol_quad/(nx**2 * bd_quad+1e-14)
+        alpha2 = vol_quad/(ny**2 * bd_quad+1e-14)
+        alphas = np.array([ min(a1, a2) for a1,a2 in zip(alpha1, alpha2) ])
+        return 0.5*alphas
 
 
     def _update_sol(self, U):

@@ -90,3 +90,32 @@ def get_circle_sector_grid(N, th0, th1, r_inner, r_outer):
     Y = np.reshape(y,(N,N))
 
     return X,Y
+
+
+def get_bump_grid(N):
+    """ Returns a grid with two bumps in the floor and ceiling.
+    Arguments:
+        N: Number of gridpoints in each direction.
+
+    Returns:
+        (X,Y): A pair of matrices defining the grid.
+    """
+    x0 = -1.5
+    x1 = 1.5
+    dx = (x1-x0)/(N-1)
+    y0 = lambda x: 0.0625*np.exp(-25*x**2)
+    y1 = lambda y: 0.8 - 0.0625*np.exp(-25*y**2)
+    x = np.zeros(N*N)
+    y = np.copy(x)
+    pos = 0
+    for i in range(N):
+        for j in range(N):
+            x_val = x0 + i*dx
+            x[pos] = x_val
+            y[pos] = y0(x_val) + j*(y1(x_val)-y0(x_val))/(N-1)
+            pos = pos+1
+
+    X = np.reshape(x,(N,N))
+    Y = np.reshape(y,(N,N))
+
+    return X,Y

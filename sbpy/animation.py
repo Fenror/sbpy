@@ -30,7 +30,5 @@ def animate_multiblock(grid, F):
               z_axis_visibility = True,
               extent=[xmin,xmax,ymin,ymax,Fmin,Fmax])
 
-    mlab.mesh([[0]],[[0]],[[0]]) # insane hack
-    mlab.mesh([[0]],[[0]],[[0]]) # insane hack
-    anim()
+    frame_gen = anim()
     mlab.show()
