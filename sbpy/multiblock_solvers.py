@@ -5,6 +5,8 @@ import numpy as np
 from scipy import integrate
 from sbpy import operators
 from sbpy import grid2d
+from sbpy import utils
+from sbpy import animation
 from scipy.stats import norm
 import tqdm
 
@@ -171,6 +173,26 @@ class AdvectionDiffusionSolver:
     Based on the interface coupling in Carpenter & Nordström (1998)"""
 
     def __init__(self, grid, **kwargs):
+        """ Initializes an AdectionDiffusionSolver object.
+
+        Arguments:
+            grid: A MultiblockSBP object.
+        Optional:
+            initial_data: A multiblock function containing initial data.
+            inflow_data: A function g(t,x,y) returning boundary data for inflow
+                boundaries.
+            outflow_data: A function g(t,x,y) returning boundary data for outflow
+                boundaries.
+            source_term: A function F(t,x,y) representing the source term.
+            velocity: A pair [a,b] specifying the flow velocity.
+            u: The exact solution (used in run_mms_test()).
+            ut: The t-derivative of the exact solution.
+            ux: The x-derivative of the exact solution.
+            uy: The y-derivative of the exact solution.
+            uxx: The second x-derivative of the exact solution.
+            uyy: The second y-derivative of the exact solution.
+        """
+
         self.grid = grid
         self.t = 0
         self.eps = 0.01
@@ -180,6 +202,7 @@ class AdvectionDiffusionSolver:
         self.Uxx = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Uyy = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ut  = [ np.zeros(shape) for shape in grid.get_shapes() ]
+        self.mms = False
 
         if 'initial_data' in kwargs:
             assert(grid.is_shape_consistent(kwargs['initial_data']))
@@ -205,6 +228,20 @@ class AdvectionDiffusionSolver:
         else:
             self.velocity = np.array([1.0,-1.0])/np.sqrt(2)
 
+        if 'u' in kwargs:
+            self.u = kwargs['u']
+        if 'ut' in kwargs:
+            self.ut = kwargs['ut']
+        if 'ux' in kwargs:
+            self.ux = kwargs['ux']
+        if 'uxx' in kwargs:
+            self.uxx = kwargs['uxx']
+        if 'uy' in kwargs:
+            self.uy = kwargs['uy']
+        if 'uyy' in kwargs:
+            self.uyy = kwargs['uyy']
+
+
         # Save bool arrays determining inflows. For example, if inflow[k]['w'][j]
         # is True, then the j:th node of the western boundary of the k:th block
         # is an inflow node.
@@ -215,6 +252,14 @@ class AdvectionDiffusionSolver:
                 inflow = np.array([ self.velocity@n < 0 for n in bd ],
                                   dtype = bool)
                 self.inflow[k][side] = inflow
+
+        # Compute flow velocity at boundaries
+        self.flow_velocity = [ {} for _ in range(self.grid.num_blocks) ]
+        for block_idx in range(self.grid.num_blocks):
+            for side in _SIDES:
+                normals = grid.get_normals(block_idx, side)
+                self.flow_velocity[block_idx][side] = \
+                    np.array([ self.velocity@n for n in normals ])
 
         # Compute interface alphas
         self.alphas = [ {} for _ in range(self.grid.num_blocks) ]
@@ -284,9 +329,20 @@ class AdvectionDiffusionSolver:
         self.Ut = [ -(a*ux + b*uy) + self.eps*(uxx + uyy) for (ux,uy,uxx,uyy) in
                    zip(self.Ux, self.Uy, self.Uxx, self.Uyy) ]
 
-        if self.source_term is not None:
-            for (k,(X,Y)) in enumerate(self.grid.get_blocks()):
-                self.Ut[k] += self.source_term(self.t, X, Y)
+        if self.mms:
+            source_term = [self.ut(self.t,X,Y) +
+                           a*self.ux(self.t,X,Y) +
+                           b*self.uy(self.t,X,Y) +
+                           -self.eps*(self.uxx(self.t,X,Y) + self.uyy(self.t,X,Y)) for
+                           X,Y in self.grid.get_blocks()]
+        elif self.source_term is not None:
+            source_term = [self.source_term(self.t,X,Y) for
+                           X,Y in self.grid.get_blocks() ]
+        else:
+            source_term = self.grid.num_blocks*[0]
+
+        for (k,F) in enumerate(source_term):
+            self.Ut[k] += F
 
 
         # Add interface penalties
@@ -338,17 +394,34 @@ class AdvectionDiffusionSolver:
             (X,Y) = self.grid.get_block(block_idx)
             (x,y) = grid2d.get_boundary(X,Y,side)
 
-            if self.inflow_data is not None:
-                in_diff = in_bc - self.inflow_data(self.t,x,y)
-                self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
-            else:
-                self.Ut[block_idx][bd_slice] += sigma*inflow*in_bc
+            if self.mms:
+                u_exact     = self.u(self.t,x,y)
+                ux_exact    = self.ux(self.t,x,y)
+                uxx_exact   = self.uxx(self.t,x,y)
+                uy_exact    = self.uy(self.t,x,y)
+                uyy_exact   = self.uyy(self.t,x,y)
+                flux_exact = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
+                                       zip(ux_exact,uy_exact,normals)])
 
-            if self.outflow_data is not None:
-                out_diff = out_bc - self.outflow_data(self.t,x,y)
-                self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
+            if self.mms:
+                inflow_data = flow_vel*u_exact - self.eps*flux_exact
+            elif self.inflow_data is not None:
+                inflow_data = self.inflow_data(self.t,x,y)
             else:
-                self.Ut[block_idx][bd_slice] += -sigma*outflow*out_bc
+                inflow_data = 0
+
+
+            if self.mms:
+                outflow_data = self.eps*flux_exact
+            elif self.outflow_data is not None:
+                outflow_data = self.outflow_data(self.t,x,y)
+            else:
+                outflow_data = 0
+
+            in_diff = in_bc - inflow_data
+            self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
+            out_diff = out_bc - outflow_data
+            self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
 
 
     def solve(self, tspan):
@@ -368,3 +441,46 @@ class AdvectionDiffusionSolver:
         self.sol = integrate.solve_ivp(f, tspan, init,
                                        rtol=1e-12, atol=1e-12,
                                        t_eval=eval_pts)
+
+
+    def run_mms_test(self, tspan):
+        """ Check simulation against an exact solution.
+
+        Note that this method requires that the object was initialized with the
+        exact solution and its derivatives.
+
+        Arguments:
+            tspan: A pair of starting and ending times.
+
+        Returns:
+            err: The L2-error at the final time.
+        """
+
+
+        self.mms = True
+        assert(hasattr(self, 'u'))
+        assert(hasattr(self, 'ux'))
+        assert(hasattr(self, 'uxx'))
+        assert(hasattr(self, 'uy'))
+        assert(hasattr(self, 'uyy'))
+
+        errs = []
+
+        self.U = [ self.u(tspan[0], X, Y) for X,Y in self.grid.get_blocks() ]
+
+        self.solve(tspan)
+
+        final_time = self.sol.t[-1]
+        U = []
+        for frame in np.transpose(self.sol.y):
+            U.append(grid2d.array_to_multiblock(self.grid, frame))
+
+        U_exact = self.grid.evaluate_function(lambda x,y: self.u(final_time, x, y))
+
+        err = [ (u - u_exact)**2 for (u,u_exact) in zip(U[-1],U_exact) ]
+        err = np.sqrt(self.grid.integrate(err))
+
+        self.mms = False
+
+        return err
+

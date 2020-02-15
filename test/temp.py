@@ -34,7 +34,7 @@ for (k, (X,Y)) in enumerate(grid.get_blocks()):
 def g(t,x,y):
     return np.sin(t)
 
-solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init, inflow_data=g)
+solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
 tspan = (0.0, 2.5)
 solver.solve(tspan)
 
