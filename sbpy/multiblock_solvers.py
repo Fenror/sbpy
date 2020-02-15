@@ -356,10 +356,12 @@ class AdvectionDiffusionSolver:
             vx = self.Ux[idx2][bd_slice2]
             vy = self.Uy[idx2][bd_slice2]
             normals = self.grid.get_normals(idx1, side1)
-            fluxu = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
-                             zip(ux,uy,normals)])
-            fluxv = np.array([vx*n1 + vy*n2 for (vx,vy,(n1,n2)) in
-                             zip(vx,vy,normals)])
+            #fluxu = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
+            #                 zip(ux,uy,normals)])
+            #fluxv = np.array([vx*n1 + vy*n2 for (vx,vy,(n1,n2)) in
+            #                 zip(vx,vy,normals)])
+            fluxu = normals[:,0]*ux + normals[:,1]*uy
+            fluxv = normals[:,0]*vx + normals[:,1]*vy
 
             s1_invisc = self.inviscid_if_coeffs[idx1][side1]
             s1_visc   = self.viscid_if_coeffs[idx1][side1]
@@ -385,9 +387,10 @@ class AdvectionDiffusionSolver:
             ux = self.Ux[block_idx][bd_slice]
             uy = self.Uy[block_idx][bd_slice]
             normals = self.grid.get_normals(block_idx, side)
-            flow_vel = np.array([ self.velocity@n for n in normals ])
-            flux = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
-                             zip(ux,uy,normals)])
+            flow_vel = self.flow_velocity[block_idx][side]
+            #flux = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
+                             #zip(ux,uy,normals)])
+            flux = normals[:,0]*ux + normals[:,1]*uy
 
             out_bc = self.eps*flux
             in_bc  = flow_vel*u - self.eps*flux

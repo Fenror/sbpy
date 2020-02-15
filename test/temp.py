@@ -35,11 +35,16 @@ def g(t,x,y):
     return np.sin(t)
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
-tspan = (0.0, 2.5)
+tspan = (0.0, 1.0)
+import time
+
+start = time.time()
 solver.solve(tspan)
+end = time.time()
+print("Elapsed time: " + str(end - start))
 
 U = []
 for frame in np.transpose(solver.sol.y):
     U.append(grid2d.array_to_multiblock(grid, frame))
 
-animation.animate_multiblock(grid, U)
+#animation.animate_multiblock(grid, U)
