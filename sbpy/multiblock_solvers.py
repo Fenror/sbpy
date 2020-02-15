@@ -173,7 +173,7 @@ class AdvectionDiffusionSolver:
     def __init__(self, grid, **kwargs):
         self.grid = grid
         self.t = 0
-        self.eps = 0.005
+        self.eps = 0.01
         self.U   = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ux  = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Uy  = [ np.zeros(shape) for shape in grid.get_shapes() ]
@@ -185,10 +185,15 @@ class AdvectionDiffusionSolver:
             assert(grid.is_shape_consistent(kwargs['initial_data']))
             self.U = kwargs['initial_data']
 
-        if 'boundary_data' in kwargs:
-            self.boundary_data = kwargs['boundary_data']
+        if 'inflow_data' in kwargs:
+            self.inflow_data = kwargs['inflow_data']
         else:
-            self.boundary_data = None
+            self.inflow_data = None
+
+        if 'outflow_data' in kwargs:
+            self.outflow_data = kwargs['outflow_data']
+        else:
+            self.outflow_data = None
 
         if 'source_term' in kwargs:
             self.source_term = kwargs['source_term']
@@ -327,9 +332,23 @@ class AdvectionDiffusionSolver:
             flow_vel = np.array([ self.velocity@n for n in normals ])
             flux = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
                              zip(ux,uy,normals)])
-            self.Ut[block_idx][bd_slice] += -sigma*outflow*(self.eps*flux - 0)
-            self.Ut[block_idx][bd_slice] += \
-                    sigma*inflow*(flow_vel*u - self.eps*flux - 0)
+
+            out_bc = self.eps*flux
+            in_bc  = flow_vel*u - self.eps*flux
+            (X,Y) = self.grid.get_block(block_idx)
+            (x,y) = grid2d.get_boundary(X,Y,side)
+
+            if self.inflow_data is not None:
+                in_diff = in_bc - self.inflow_data(self.t,x,y)
+                self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
+            else:
+                self.Ut[block_idx][bd_slice] += sigma*inflow*in_bc
+
+            if self.outflow_data is not None:
+                out_diff = out_bc - self.outflow_data(self.t,x,y)
+                self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
+            else:
+                self.Ut[block_idx][bd_slice] += -sigma*outflow*out_bc
 
 
     def solve(self, tspan):

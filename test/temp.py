@@ -13,7 +13,7 @@ from sbpy import utils
 
 #blocks = grid2d.load_p3d('cyl11.p3d')
 #grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-N = 130
+N = 30
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
@@ -34,7 +34,7 @@ for (k, (X,Y)) in enumerate(grid.get_blocks()):
 def g(t,x,y):
     return np.sin(t)
 
-solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
+solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init, inflow_data=g)
 tspan = (0.0, 2.5)
 solver.solve(tspan)
 
