@@ -5,8 +5,22 @@ import numpy as np
 from mayavi import mlab
 
 
-def animate_multiblock(grid, F):
-    """ Animates a list of multiblock functions. """
+def animate_multiblock(grid, F, **kwargs):
+    """ Animates a list of multiblock functions.
+
+    Arguments:
+        F: A list of multiblock functions.
+
+    Optional:
+        fps: A positive integer representing the number of frames per second
+        stored in F.
+
+    """
+
+    if 'fps' in kwargs:
+        fps = kwargs['fps']
+    else:
+        fps = 30
 
     Fmin = np.min(np.array(F))
     Fmax = np.max(np.array(F))
@@ -18,11 +32,12 @@ def animate_multiblock(grid, F):
                  zip(grid.get_blocks(), F[0]) ]
 
 
-    @mlab.animate(delay=int(1000/60))
+    @mlab.animate(delay=int(1000/fps))
     def anim():
         for f in itertools.cycle(F):
             for (s,f_block) in zip(surfaces, f):
-                s.mlab_source.z = f_block
+                s.mlab_source.trait_set(scalars=f_block)
+                s.mlab_source.trait_set(z=f_block)
             yield
 
     mlab.axes(x_axis_visibility = True,

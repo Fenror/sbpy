@@ -434,7 +434,7 @@ class AdvectionDiffusionSolver:
 
             return np.concatenate([ ut.flatten() for ut in self.Ut ])
 
-        eval_pts = np.linspace(tspan[0], tspan[1], int(60*(tspan[1]-tspan[0])))
+        eval_pts = np.linspace(tspan[0], tspan[1], int(30*(tspan[1]-tspan[0])))
         self.sol = integrate.solve_ivp(f, tspan, init,
                                        rtol=1e-12, atol=1e-12,
                                        t_eval=eval_pts)

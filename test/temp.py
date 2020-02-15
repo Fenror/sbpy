@@ -13,7 +13,7 @@ from sbpy import utils
 
 #blocks = grid2d.load_p3d('cyl11.p3d')
 #grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-N = 30
+N = 60
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
@@ -35,7 +35,7 @@ def g(t,x,y):
     return np.sin(t)
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
-tspan = (0.0, 1.0)
+tspan = (0.0, 2.0)
 import time
 
 start = time.time()
@@ -47,4 +47,4 @@ U = []
 for frame in np.transpose(solver.sol.y):
     U.append(grid2d.array_to_multiblock(grid, frame))
 
-#animation.animate_multiblock(grid, U)
+animation.animate_multiblock(grid, U)
