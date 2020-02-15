@@ -245,11 +245,11 @@ class Multiblock:
                     self.non_interfaces[i].append(side)
 
         # Find external boundaries
-        self.external_boundaries = []
+        self.boundaries = []
         for block_idx in range(self.num_blocks):
             for side in _SIDES:
                 if not self.is_interface(block_idx, side):
-                    self.external_boundaries.append((block_idx, side))
+                    self.boundaries.append((block_idx, side))
 
 
 
@@ -317,14 +317,13 @@ class Multiblock:
         return self.block_interfaces
 
 
-    def get_external_boundaries(self):
+    def get_boundaries(self):
         """ Returns a list of pairs defining the external boundaries of the
-        domain. For example, if ext_bds = get_external_boundaries(), then each
-        element of ext_bds is a pair of the form (k, side), where side = 'w', 'e'
-        's', or 'n', specifying a block and its side constituting an external
-        boundary.
+        domain. For example, if bds = get_boundaries(), then each element of
+        ext_bds is a pair of the form (k, side), where side = 'w', 'e' 's', or
+        'n', specifying a block and its side constituting an external boundary.
         """
-        return self.external_boundaries
+        return self.boundaries
 
 
     def get_shapes(self):
@@ -364,8 +363,6 @@ class Multiblock:
         return is_flipped
 
 
-
-
     def plot_grid(self):
         """ Plot the entire grid. """
 
@@ -380,8 +377,26 @@ class Multiblock:
         plt.show()
 
 
-    def plot_domain(self):
-        """ Fancy domain plot without gridlines. """
+    def plot_domain(self, **kwargs):
+        """ Fancy domain plot without gridlines.
+
+        Arguments:
+            boundary_indices: True or False. Draws indices at the boundaries.
+            interface_indices: True or False. Draws indices at the interfaces.
+        """
+
+        interface_indices = False
+
+        if 'boundary_indices' in kwargs:
+            boundary_indices = kwargs['boundary_indices']
+        else:
+            boundary_indices = False
+
+        if 'interface_indices' in kwargs:
+            interface_indices = kwargs['interface_indices']
+        else:
+            interface_indices = False
+
 
         fig, ax = plt.subplots()
         for k,(X,Y) in enumerate(self.blocks):
@@ -399,8 +414,29 @@ class Multiblock:
             ax.fill(x_poly,y_poly,'tab:gray')
             ax.plot(x_poly,y_poly,'k')
             c = get_center(X,Y)
-            ax.text(c[0], c[1], "$\Omega_" + str(k) + "$")
+            ax.text(c[0], c[1], "$\Omega_" + str(k) + "$", fontsize=20,
+                    fontweight='bold')
 
+        # Draw boundary indices
+        if boundary_indices:
+            for (bd_idx, (block_idx, side)) in enumerate(self.boundaries):
+                X,Y = self.blocks[block_idx]
+                xb,yb = get_boundary(X,Y,side)
+                xc = np.median(xb)
+                yc = np.median(yb)
+                ax.text(xc, yc, str(bd_idx), fontsize=20,
+                        fontweight='bold')
+
+        # Draw interface indices
+        if interface_indices:
+            for (if_idx, interface) in enumerate(self.interfaces):
+                (blk_idx,side),(_,_) = interface
+                X,Y = self.blocks[blk_idx]
+                xb,yb = get_boundary(X,Y,side)
+                xc = np.median(xb)
+                yc = np.median(yb)
+                ax.text(xc, yc, str(if_idx), fontsize=20,
+                        fontweight='bold')
 
         plt.show()
 
