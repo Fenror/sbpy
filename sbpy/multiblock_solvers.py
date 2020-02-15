@@ -346,7 +346,8 @@ class AdvectionDiffusionSolver:
 
 
         # Add interface penalties
-        for ((idx1,side1),(idx2,side2)) in self.grid.get_interfaces():
+        for (if_idx,interface) in enumerate(self.grid.get_interfaces()):
+            ((idx1,side1),(idx2,side2)) = interface
             bd_slice1 = self.grid.get_boundary_slice(idx1, side1)
             bd_slice2 = self.grid.get_boundary_slice(idx2, side2)
             u  = self.U[idx1][bd_slice1]
@@ -365,10 +366,16 @@ class AdvectionDiffusionSolver:
             s2_visc   = self.viscid_if_coeffs[idx2][side2]
 
 
-            self.Ut[idx1][bd_slice1] += s1_invisc*(u-v)
-            self.Ut[idx1][bd_slice1] += s1_visc*(fluxu - fluxv)
-            self.Ut[idx2][bd_slice2] += s2_invisc*(v-u)
-            self.Ut[idx2][bd_slice2] += s2_visc*(fluxv - fluxu)
+            if self.grid.is_flipped_interface(if_idx):
+                self.Ut[idx1][bd_slice1] += s1_invisc*(u-np.flip(v))
+                self.Ut[idx1][bd_slice1] += s1_visc*(fluxu - np.flip(fluxv))
+                self.Ut[idx2][bd_slice2] += s2_invisc*(v-np.flip(u))
+                self.Ut[idx2][bd_slice2] += s2_visc*(fluxv - np.flip(fluxu))
+            else:
+                self.Ut[idx1][bd_slice1] += s1_invisc*(u-v)
+                self.Ut[idx1][bd_slice1] += s1_visc*(fluxu - fluxv)
+                self.Ut[idx2][bd_slice2] += s2_invisc*(v-u)
+                self.Ut[idx2][bd_slice2] += s2_visc*(fluxv - fluxu)
 
 
         # Add external boundary penalties

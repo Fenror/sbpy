@@ -11,13 +11,12 @@ from sbpy import animation
 from sbpy import utils
 
 
-#blocks = grid2d.load_p3d('cyl11.p3d')
-#grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-N = 60
-blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+blocks = grid2d.load_p3d('cyl50.p3d')
+#N = 60
+#blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
 #x1 = np.linspace(-1,0,N)
 #y1 = np.linspace(0,1,N)
 #x2 = np.linspace(0,1,N)
@@ -35,7 +34,7 @@ def g(t,x,y):
     return np.sin(t)
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
-tspan = (0.0, 2.0)
+tspan = (0.0, 1.5)
 import time
 
 start = time.time()

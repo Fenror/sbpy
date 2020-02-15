@@ -343,6 +343,29 @@ class Multiblock:
             return False
 
 
+    def is_flipped_interface(self, interface_idx):
+        """ Check if an interface has flipped orientation compared to its
+        neighbor, such as, for example, an east-to-south interface.
+
+        Arguments:
+            interface_idx: The index of the interface.
+
+        Returns:
+            True if flipped, False otherwise.
+        """
+        is_flipped = False
+        ((_,side1),(_,side2)) = self.interfaces[interface_idx]
+        if (side1, side2) in [('s','e'), ('s','s'),
+                              ('e','s'), ('e','e'),
+                              ('n','w'), ('n','n'),
+                              ('w','n'), ('w','w')]:
+            is_flipped = True
+
+        return is_flipped
+
+
+
+
     def plot_grid(self):
         """ Plot the entire grid. """
 
