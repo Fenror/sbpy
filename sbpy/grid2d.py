@@ -19,6 +19,7 @@ thought of as lists of such pairs. A list F of grid functions is called a
 sequence of grids constituting a multiblock grid.
 """
 
+from enum import Enum
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
@@ -119,6 +120,9 @@ class Multiblock:
             the northern boundary of the block i coincides with the
             western boundary of the western boundary of block j.
 
+        boundaries: A list of pairs of the form (k,s), where k is the block index
+            and s is the side constituting an external boundary.
+
         corners: A list of unique corners in the grid.
 
         edges: A list pairs of indices to the corners list, defining all the
@@ -141,16 +145,9 @@ class Multiblock:
             s1, s2 are the sides of the respective blocks that make up the
             interface.
 
-        non_interfaces: A list of lists specifying the non-interfaces of each
-            block. For example, if non_interfaces[i] = ['w', 'n'],
-            then the western and northern sides of block i are not
-            interfaces.
-
         num_blocks: The total number of blocks in the grid.
 
-        Nx: A list of the number of grid points in the x-direction of each block.
-
-        Ny: A list of the number of grid points in the y-direction of each block.
+        shapes: A list of pairs (Nx, Ny) representing the shape of each block.
     """
 
     def __init__(self, blocks):
@@ -206,7 +203,7 @@ class Multiblock:
         self.face_edges = []
         for face in self.faces:
             self.face_edges.append({})
-            for k,side in enumerate(['s','e','n','w']):
+            for k,side in enumerate(_SIDES):
                 edge = np.array(sorted([face[k], face[(k+1)%4]]))
                 self.face_edges[-1][side] = \
                     np.argwhere(np.all(edge == self.edges, axis=1)).item()
@@ -216,7 +213,7 @@ class Multiblock:
         for ((i,edges1), (j,edges2)) in \
         itertools.combinations(enumerate(self.face_edges),2):
             for (side1,side2) in \
-            itertools.product(['s', 'e', 'n', 'w'], repeat=2):
+            itertools.product(_SIDES, repeat=2):
                 if edges1[side1] == edges2[side2]:
                     self.block_interfaces[i][side1] = (j, side2)
                     self.block_interfaces[j][side2] = (i, side1)
@@ -226,23 +223,12 @@ class Multiblock:
             blocks = []
             sides = []
             for n in range(self.num_blocks):
-                for side in ['w','s','n','e']:
+                for side in _SIDES:
                     if self.face_edges[n][side] == k:
                         blocks.append(n)
                         sides.append(side)
             if len(blocks) == 2:
                 self.interfaces.append(((blocks[0],sides[0]),(blocks[1],sides[1])))
-
-        # Find non-interfaces
-        self.non_interfaces = [[] for _ in range(self.num_blocks)]
-        for (i,edges) in enumerate(self.face_edges):
-            is_interface = False
-            other_edges = \
-                np.array([ np.fromiter(other_edges.values(), dtype=float) for
-                    (j, other_edges) in enumerate(self.face_edges) if j != i])
-            for side in _SIDES:
-                if edges[side] not in other_edges.flatten():
-                    self.non_interfaces[i].append(side)
 
         # Find external boundaries
         self.boundaries = []
@@ -250,6 +236,8 @@ class Multiblock:
             for side in _SIDES:
                 if not self.is_interface(block_idx, side):
                     self.boundaries.append((block_idx, side))
+
+        self.boundary_labels = [ None for _ in self.boundaries ]
 
 
 
@@ -290,7 +278,7 @@ class Multiblock:
         Returns:
             slice: A slice that can be used to index the given boundary in F.
         """
-        assert(side in ['s', 'e', 'n', 'w'])
+        assert(side in _SIDES)
         (Nx, Ny) = self.shapes[k]
         slice_dict = {'s': (slice(Nx), 0),
                       'e': (-1, slice(Ny)),
@@ -464,6 +452,18 @@ class Multiblock:
             return np.flip(get_function_boundary(F, neighbor_side))
         else:
             return get_function_boundary(F, neighbor_side)
+
+
+    def add_boundary_label(self, boundary_index, label):
+        """ Adds a label to a boundary.
+
+        Arguments:
+            boundary_index: The index of the boundary in the list returned by
+                get_boundaries(). See plot_domain(boundary_indices=True)
+
+            label: The label to assign to the boundary.
+        """
+        self.boundary_labels[boundary_index] = label
 
 
 class MultiblockSBP(Multiblock):

@@ -11,12 +11,12 @@ from sbpy import animation
 from sbpy import utils
 
 
-blocks = grid2d.load_p3d('cyl50.p3d')
-#N = 60
-#blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+#blocks = grid2d.load_p3d('cyl50.p3d')
+N = 60
+blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
+          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
+          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
+          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
 #x1 = np.linspace(-1,0,N)
 #y1 = np.linspace(0,1,N)
 #x2 = np.linspace(0,1,N)
@@ -31,9 +31,14 @@ for (k, (X,Y)) in enumerate(grid.get_blocks()):
     init[k] = 0.02*norm.pdf(X,loc=-0.5,scale=0.05)*norm.pdf(Y,loc=0.5,scale=0.05)
 
 def g(t,x,y):
-    return np.sin(t)
+    return 1
 
-solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init)
+def h(t,x,y):
+    return 0
+
+solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init,
+                                                     inflow_data = g,
+                                                     outflow_data = h)
 tspan = (0.0, 1.5)
 import time
 
