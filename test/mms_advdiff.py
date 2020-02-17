@@ -8,12 +8,6 @@ from sbpy import animation
 from sbpy import utils
 
 
-#N = 30
-#blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-#          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
-
 def u(t,x,y):
     return np.sin(t+x+y)
 
@@ -37,18 +31,8 @@ def uy(t,x,y):
 def uyy(t,x,y):
     return -np.sin(t+x+y)
 
-
-#grid2d.collocate_corners(blocks)
-#grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-#
-#solver = multiblock_solvers.AdvectionDiffusionSolver(grid,
-#                                                     u=u, ux=ux, uxx=uxx,
-#                                                     uy=uy, uyy=uyy, ut=ut)
-#tspan = (0.0, 1.05)
-#print(solver.run_mms_test(tspan))
-
 errs = []
-resolutions = np.array([11, 21, 41, 81, 161])
+resolutions = np.array([11, 21, 41, 81])
 h = 1/(resolutions-1)
 
 for N in resolutions:
@@ -58,17 +42,13 @@ for N in resolutions:
               utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
     grid2d.collocate_corners(blocks)
     grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-
-
     solver = multiblock_solvers.AdvectionDiffusionSolver(grid,
                                                          u=u, ux=ux, uxx=uxx,
                                                          uy=uy, uyy=uyy, ut=ut)
-
     tspan = (0.0, 1.05)
     err = solver.run_mms_test(tspan)
     print("\n" + str(err)+"\n")
     errs.append(err)
-
 
 utils.create_convergence_table(resolutions, errs, h)
 

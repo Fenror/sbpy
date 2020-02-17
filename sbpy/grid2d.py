@@ -237,8 +237,8 @@ class Multiblock:
                 if not self.is_interface(block_idx, side):
                     self.boundaries.append((block_idx, side))
 
-        self.boundary_labels = [ None for _ in self.boundaries ]
-
+        self.num_boundaries = len(self.boundaries)
+        self.boundary_info = [ None for _ in self.boundaries ]
 
 
     def evaluate_function(self, f):
@@ -454,16 +454,21 @@ class Multiblock:
             return get_function_boundary(F, neighbor_side)
 
 
-    def add_boundary_label(self, boundary_index, label):
-        """ Adds a label to a boundary.
+    def set_boundary_info(self, boundary_index, info):
+        """ Adds user-defined information to a boundary.  Typically used to
+        specify the boundary condition to be used.
 
         Arguments:
             boundary_index: The index of the boundary in the list returned by
                 get_boundaries(). See plot_domain(boundary_indices=True)
 
-            label: The label to assign to the boundary.
+            info: The information to assign to the boundary (for example a dict).
         """
-        self.boundary_labels[boundary_index] = label
+        self.boundary_info[boundary_index] = info
+
+    def get_boundary_info(self, boundary_index):
+        """ Returns user-defined information associated to a boundary. """
+        return self.boundary_info[boundary_index]
 
 
 class MultiblockSBP(Multiblock):

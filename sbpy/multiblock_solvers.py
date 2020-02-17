@@ -177,6 +177,14 @@ class AdvectionDiffusionSolver:
             self.viscid_if_coeffs[idx2][side2] = \
                 s2_viscid*self.eps*pinv2*bdquad2
 
+        # Set boundary types
+        for bd_idx in range(grid.num_boundaries):
+            if grid.get_boundary_info(bd_idx) is None:
+                grid.set_boundary_info(bd_idx,
+                        {'type': 'char',
+                         'inflow_data': lambda t,x,y: 0,
+                         'outflow_data': lambda t,x,y,: 0})
+
 
     def _compute_alpha(self, block_idx, side):
         vol_quad = self.grid.sbp_ops[block_idx].volume_quadrature
@@ -258,24 +266,22 @@ class AdvectionDiffusionSolver:
 
 
         # Add external boundary penalties
-        for (block_idx, side) in self.grid.get_boundaries():
+        for (bd_idx, (block_idx, side)) in enumerate(self.grid.get_boundaries()):
+            bd_info  = self.grid.get_boundary_info(bd_idx)
             bd_slice = self.grid.get_boundary_slice(block_idx, side)
-            pinv = self.grid.sbp_ops[block_idx].pinv[side]
-            bd_quad = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
-            inflow = self.inflow[block_idx][side]
-            outflow = np.invert(inflow)
-            sigma = pinv*bd_quad
-            u  = self.U[block_idx][bd_slice]
-            ux = self.Ux[block_idx][bd_slice]
-            uy = self.Uy[block_idx][bd_slice]
-            normals = self.grid.get_normals(block_idx, side)
+            pinv     = self.grid.sbp_ops[block_idx].pinv[side]
+            bd_quad  = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
+            inflow   = self.inflow[block_idx][side]
+            outflow  = np.invert(inflow)
+            sigma    = pinv*bd_quad
+            u        = self.U[block_idx][bd_slice]
+            ux       = self.Ux[block_idx][bd_slice]
+            uy       = self.Uy[block_idx][bd_slice]
+            normals  = self.grid.get_normals(block_idx, side)
             flow_vel = self.flow_velocity[block_idx][side]
-            flux = normals[:,0]*ux + normals[:,1]*uy
-
-            out_bc = self.eps*flux
-            in_bc  = flow_vel*u - self.eps*flux
-            (X,Y) = self.grid.get_block(block_idx)
-            (x,y) = grid2d.get_boundary(X,Y,side)
+            flux     = normals[:,0]*ux + normals[:,1]*uy
+            (X,Y)    = self.grid.get_block(block_idx)
+            (x,y)    = grid2d.get_boundary(X,Y,side)
 
             if self.mms:
                 u_exact     = self.u(self.t,x,y)
@@ -286,25 +292,57 @@ class AdvectionDiffusionSolver:
                 flux_exact = np.array([ux*n1 + uy*n2 for (ux,uy,(n1,n2)) in
                                        zip(ux_exact,uy_exact,normals)])
 
-            if self.mms:
-                inflow_data = flow_vel*u_exact - self.eps*flux_exact
-            elif self.inflow_data is not None:
-                inflow_data = self.inflow_data(self.t,x,y)
-            else:
-                inflow_data = 0
+            if bd_info['type'] == 'dirichlet':
+                if self.mms:
+                    data = u_exact
+                else:
+                    g = bd_info['data']
+                    data = g(self.t,x,y)
+
+                self.Ut[block_idx][bd_slice] += -sigma*(u-data)
+
+            if bd_info['type'] == 'char':
+                g_in  = bd_info['inflow_data']
+                g_out = bd_info['outflow_data']
+                if self.mms:
+                    inflow_data = flow_vel*u_exact - self.eps*flux_exact
+                    outflow_data = self.eps*flux_exact
+                else:
+                    inflow_data = g_in(self.t,x,y)
+                    outflow_data = g_out(self.t,x,y)
+                in_bc    = flow_vel*u - self.eps*flux
+                out_bc   = self.eps*flux
+                in_diff = in_bc - inflow_data
+                out_diff = out_bc - outflow_data
+                self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
+                self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
 
 
-            if self.mms:
-                outflow_data = self.eps*flux_exact
-            elif self.outflow_data is not None:
-                outflow_data = self.outflow_data(self.t,x,y)
-            else:
-                outflow_data = 0
+    def set_boundary_condition(self, boundary_index, condition):
+        """ Set the boundary condition for a given boundary.
 
-            in_diff = in_bc - inflow_data
-            self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
-            out_diff = out_bc - outflow_data
-            self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
+        You can see the indices of external boundaries by running
+        plot_domain(boundary_indices=True) on your grid.
+
+        Arguments:
+            boundary_index: The index of the boundary you wish to set a boundary
+                condition for.
+
+            condition: To specify a dirichlet condition, supply a dict of the
+                form {'type': 'dirichlet', 'data': g}, where g = g(t,x,y).
+                To specify characteristic conditions (i.e. a Robin condition at
+                inflow nodes and a Neumann condition at outflow nodes), supply a
+                dict of the form
+                {'type': 'char', 'inflow_data': g, 'outflow_data': h}, where
+                g = g(t,x,y) and h=h(t,x,y).
+        """
+        assert('type' in condition)
+        if ('type' == 'dirichlet'):
+            assert('data' in condition)
+        if ('type' == 'char'):
+            assert('inflow_data' in condition)
+            assert('outflow_data' in condition)
+        self.grid.set_boundary_info(boundary_index, condition)
 
 
     def solve(self, tspan):
