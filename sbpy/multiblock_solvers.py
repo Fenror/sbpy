@@ -64,6 +64,7 @@ class AdvectionDiffusionSolver:
                 boundaries.
             source_term: A function F(t,x,y) representing the source term.
             velocity: A pair [a,b] specifying the flow velocity.
+            diffusion: The diffusion coefficient.
             u: The exact solution (used in run_mms_test()).
             ut: The t-derivative of the exact solution.
             ux: The x-derivative of the exact solution.
@@ -74,7 +75,6 @@ class AdvectionDiffusionSolver:
 
         self.grid = grid
         self.t = 0
-        self.eps = 0.01
         self.U   = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ux  = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Uy  = [ np.zeros(shape) for shape in grid.get_shapes() ]
@@ -82,6 +82,11 @@ class AdvectionDiffusionSolver:
         self.Uyy = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.Ut  = [ np.zeros(shape) for shape in grid.get_shapes() ]
         self.mms = False
+
+        if 'diffusion' in kwargs:
+            self.eps = kwargs['diffusion']
+        else:
+            self.eps = 0.01
 
         if 'initial_data' in kwargs:
             assert(grid.is_shape_consistent(kwargs['initial_data']))

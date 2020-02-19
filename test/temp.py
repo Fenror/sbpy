@@ -26,6 +26,7 @@ blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
 #blocks = [(X1,Y1),(X2,Y2)]
 grid2d.collocate_corners(blocks)
 grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+#grid.plot_domain(boundary_indices=True)
 init = [ np.zeros(shape) for shape in grid.get_shapes() ]
 #for (k, (X,Y)) in enumerate(grid.get_blocks()):
 #    init[k] = 0.1*norm.pdf(X,loc=-0.5,scale=0.2)*norm.pdf(Y,loc=0.5,scale=0.2)
@@ -33,15 +34,24 @@ init = [ np.zeros(shape) for shape in grid.get_shapes() ]
 def g(t,x,y):
     return 1
 
-velocity = np.array([0.0,0.0])
+def h(t,x,y):
+    return 0
+
+velocity = np.array([1,1])/np.sqrt(2)
+diffusion = 0.01
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init,
-                                                     velocity = velocity)
+                                                     velocity=velocity,
+                                                     diffusion=diffusion)
 solver.set_boundary_condition(1,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(3,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(5,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(7,{'type': 'dirichlet', 'data': g})
-tspan = (0.0, 2.5)
+solver.set_boundary_condition(0,{'type': 'dirichlet', 'data': h})
+solver.set_boundary_condition(2,{'type': 'dirichlet', 'data': h})
+solver.set_boundary_condition(4,{'type': 'dirichlet', 'data': h})
+solver.set_boundary_condition(6,{'type': 'dirichlet', 'data': h})
+tspan = (0.0, 3.5)
 import time
 
 start = time.time()
@@ -53,4 +63,4 @@ U = []
 for frame in np.transpose(solver.sol.y):
     U.append(grid2d.array_to_multiblock(grid, frame))
 
-animation.animate_multiblock(grid, U, stride=4)
+animation.animate_multiblock(grid, U, stride=2)
