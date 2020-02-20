@@ -1,5 +1,6 @@
 """ This module contains various utility functions. """
 
+import itertools
 import numpy as np
 
 def create_convergence_table(labels, errors, h, title=None, filename=None):
@@ -119,3 +120,40 @@ def get_bump_grid(N):
     Y = np.reshape(y,(N,N))
 
     return X,Y
+
+
+def fetch_highres_data(coarse_grid, coarse_indices, fine_grid, fine_data):
+    """ Retrieves data from a high resolution grid to be used in a low resolution
+    grid.
+
+    Arguments:
+        coarse_grid: A Multiblock object representing the coarse grid.
+        coarse_indices: A list of indices of the form (block_idx, i, j) where we
+            want to try to fetch data from the fine grid.
+        fine_grid: A Multiblock object representing the fine grid.
+        fine_data: A multiblock function on the fine grid.
+
+    Returns:
+        coarse_data: Function evaluations fetched from the fine grid.
+        coarse_indices: A list of indices in the coarse grid corresponding to the
+            fetched data.
+    """
+
+    fine_blocks = fine_grid.get_blocks()
+    fine_shapes = fine_grid.get_shapes()
+    coarse_blocks = coarse_grid.get_blocks()
+    coarse_data = []
+    new_coarse_indices = []
+    for (blk,ic,jc) in coarse_indices:
+        Xf,Yf = fine_blocks[blk]
+        Xc,Yc = coarse_blocks[blk]
+        xc = Xc[ic,jc]
+        yc = Yc[ic,jc]
+        Nx,Ny = fine_shapes[blk]
+        tol = 1e-14
+        for n,m in itertools.product(range(Nx),range(Ny)):
+            if np.abs(Xf[n,m] - xc) < tol and np.abs(Yf[n,m] - yc) < tol:
+                new_coarse_indices.append((blk,ic,jc))
+                coarse_data.append(fine_data[blk][n,m])
+
+    return coarse_data, new_coarse_indices

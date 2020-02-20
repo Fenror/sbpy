@@ -58,13 +58,13 @@ class AdvectionDiffusionSolver:
             grid: A MultiblockSBP object.
         Optional:
             initial_data: A multiblock function containing initial data.
-            inflow_data: A function g(t,x,y) returning boundary data for inflow
-                boundaries.
-            outflow_data: A function g(t,x,y) returning boundary data for outflow
-                boundaries.
             source_term: A function F(t,x,y) representing the source term.
             velocity: A pair [a,b] specifying the flow velocity.
             diffusion: The diffusion coefficient.
+            internal_data: A list of values to be enforced internally (used
+                together with the internal_indices argument).
+            internal_indices: A list of indices of the form (blk, i, j) used
+                together with internal_data to enforce internal data.
             u: The exact solution (used in run_mms_test()).
             ut: The t-derivative of the exact solution.
             ux: The x-derivative of the exact solution.
@@ -92,16 +92,6 @@ class AdvectionDiffusionSolver:
             assert(grid.is_shape_consistent(kwargs['initial_data']))
             self.U = kwargs['initial_data']
 
-        if 'inflow_data' in kwargs:
-            self.inflow_data = kwargs['inflow_data']
-        else:
-            self.inflow_data = None
-
-        if 'outflow_data' in kwargs:
-            self.outflow_data = kwargs['outflow_data']
-        else:
-            self.outflow_data = None
-
         if 'source_term' in kwargs:
             self.source_term = kwargs['source_term']
         else:
@@ -111,6 +101,18 @@ class AdvectionDiffusionSolver:
             self.velocity = kwargs['velocity']
         else:
             self.velocity = np.array([1.0,-1.0])/np.sqrt(2)
+
+        if 'internal_data' in kwargs:
+            assert('internal_indices' in kwargs)
+            self.internal_data = kwargs['internal_data']
+        else:
+            self.internal_data = None
+
+        if 'internal_indices' in kwargs:
+            assert('internal_data' in kwargs)
+            self.internal_indices = kwargs['internal_indices']
+        else:
+            self.internal_indices = None
 
         if 'u' in kwargs:
             self.u = kwargs['u']
@@ -321,6 +323,12 @@ class AdvectionDiffusionSolver:
                 out_diff = out_bc - outflow_data
                 self.Ut[block_idx][bd_slice] += sigma*inflow*in_diff
                 self.Ut[block_idx][bd_slice] += -sigma*outflow*out_diff
+
+        # Add internal penalties
+        if self.internal_data is not None:
+            for (k,(blk, i, j)) in enumerate(self.internal_indices):
+                self.Ut[blk][i,j] -= 100*(self.U[blk][i,j] - self.internal_data[k])
+
 
 
     def set_boundary_condition(self, boundary_index, condition):
