@@ -12,7 +12,7 @@ from sbpy import utils
 
 
 #blocks = grid2d.load_p3d('cyl50.p3d')
-N = 51
+N = 21
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
@@ -24,6 +24,7 @@ blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
 #X1,Y1 = np.meshgrid(x1,y1,indexing='ij')
 #X2,Y2 = np.meshgrid(x2,y2,indexing='ij')
 #blocks = [(X1,Y1),(X2,Y2)]
+blocks = utils.get_annulus_grid(N)
 grid2d.collocate_corners(blocks)
 grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 #grid.plot_domain(boundary_indices=True)

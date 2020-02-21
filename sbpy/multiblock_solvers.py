@@ -1,6 +1,7 @@
 """ This module contains classes for solving partial differential equations on
 multiblock grids. """
 
+import sys
 import numpy as np
 from scipy import integrate
 from sbpy import operators
@@ -8,7 +9,11 @@ from sbpy import grid2d
 from sbpy import utils
 from sbpy import animation
 from scipy.stats import norm
-import tqdm
+
+if utils.is_interactive():
+    from tqdm.notebook import tqdm
+else:
+    from tqdm import tqdm
 
 
 _SIDES = ['s', 'e', 'n', 'w']
@@ -39,7 +44,7 @@ def solve_ivp_pbar(tspan):
                 new_f.pbar.refresh()
             return f(t,y)
 
-        new_f.pbar = tqdm.tqdm(total=100)
+        new_f.pbar = tqdm(total=100)
         new_f.prev_t = tspan[0]
 
         return new_f

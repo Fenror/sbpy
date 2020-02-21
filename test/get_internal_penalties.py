@@ -44,23 +44,25 @@ for frame in np.transpose(solver.sol.y):
 
 U_highres = U[-1]
 
-N = 21
-blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
-grid2d.collocate_corners(blocks)
-coarse_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-
-selector = gui.NodeSelector(coarse_grid)
-selector()
-nodes = selector.nodes
-
-int_data, int_idx = utils.fetch_highres_data(coarse_grid,
-        nodes, fine_grid, U_highres)
-
+#N = 21
+#blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
+#          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+#grid2d.collocate_corners(blocks)
+#coarse_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+#
+#selector = gui.NodeSelector(coarse_grid)
+#selector()
+#nodes = selector.nodes
+#
+#int_data, int_idx = utils.fetch_highres_data(coarse_grid,
+#        nodes, fine_grid, U_highres)
+#
 import pickle
-with open('int_data.pkl', 'wb') as f:
-    pickle.dump([int_data, int_idx], f)
+#with open('int_data.pkl', 'wb') as f:
+#    pickle.dump([int_data, int_idx], f)
 
+with open('highres_sol.pkl', 'wb') as f:
+    pickle.dump([U_highres], f)
 
