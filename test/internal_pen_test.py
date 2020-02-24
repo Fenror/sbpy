@@ -13,9 +13,7 @@ from sbpy import animation
 from sbpy import utils
 from sbpy import gui
 
-#with open('int_data.pkl', 'rb') as f:
-#    int_data, int_idx = pickle.load(f)
-with open('highres_sol.pkl', 'rb') as f:
+with open('highres_sol161.pkl', 'rb') as f:
     U_highres, = pickle.load(f)
 
 def g(t,x,y):
@@ -33,7 +31,7 @@ blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
 grid2d.collocate_corners(blocks)
 coarse_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 
-N = 81
+N = 161
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
@@ -41,18 +39,14 @@ blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
 grid2d.collocate_corners(blocks)
 fine_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 
-#selector = gui.NodeSelector(coarse_grid)
-#selector()
-#nodes = selector.nodes
+nodes = utils.boundary_layer_selection(coarse_grid, [1,3,5,7], 4)
 
-nodes = utils.boundary_layer_selection(coarse_grid, [1,3,5,7], 5)
-
-int_data, int_idx = utils.fetch_highres_data(coarse_grid,
-        nodes, fine_grid, U_highres)
+int_data = utils.fetch_highres_data(coarse_grid,
+        nodes, fine_grid, U_highres, stride=8)
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(coarse_grid,
         velocity=velocity, diffusion=diffusion,
-        internal_data = int_data, internal_indices = int_idx)
+        internal_data = int_data, internal_indices = nodes)
 
 solver.set_boundary_condition(1,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(3,{'type': 'dirichlet', 'data': g})

@@ -133,16 +133,20 @@ def get_bump_grid(N):
     return X,Y
 
 
-def fetch_highres_data(coarse_grid, coarse_indices, fine_grid, fine_data):
+def fetch_highres_data(coarse_grid, coarse_indices, fine_grid,
+                       fine_data, stride):
     """ Retrieves data from a high resolution grid to be used in a low resolution
     grid.
 
     Arguments:
         coarse_grid: A Multiblock object representing the coarse grid.
         coarse_indices: A list of indices of the form (block_idx, i, j) where we
-            want to try to fetch data from the fine grid.
+            want to fetch data from the fine grid.
         fine_grid: A Multiblock object representing the fine grid.
         fine_data: A multiblock function on the fine grid.
+        stride: The stride in the fine grid that gives the coarse grid. I.e.
+            if (X,Y) is a block in the fine grid, then X[::stride], Y[::stride]
+            is the same block in the coarse grid.
 
     Returns:
         coarse_data: Function evaluations fetched from the fine grid.
@@ -150,28 +154,23 @@ def fetch_highres_data(coarse_grid, coarse_indices, fine_grid, fine_data):
             fetched data.
     """
 
-    fine_blocks = fine_grid.get_blocks()
-    fine_shapes = fine_grid.get_shapes()
-    coarse_blocks = coarse_grid.get_blocks()
     coarse_data = []
-    new_coarse_indices = []
     for (blk,ic,jc) in coarse_indices:
-        Xf,Yf = fine_blocks[blk]
-        Xc,Yc = coarse_blocks[blk]
-        xc = Xc[ic,jc]
-        yc = Yc[ic,jc]
-        Nx,Ny = fine_shapes[blk]
-        tol = 1e-14
-        for n,m in itertools.product(range(Nx),range(Ny)):
-            if np.abs(Xf[n,m] - xc) < tol and np.abs(Yf[n,m] - yc) < tol:
-                new_coarse_indices.append((blk,ic,jc))
-                coarse_data.append(fine_data[blk][n,m])
+        coarse_data.append(fine_data[blk][ic*stride,jc*stride])
 
-    return coarse_data, new_coarse_indices
+    return coarse_data
 
 
 def boundary_layer_selection(grid, bd_indices, n):
-    """ Returns a list of indices close to the supplied boundaries. """
+    """ Returns a list of indices of the n closest slices of interior nodes to
+        the supplied boundaries. Use grid.plot_domain(boundary_indices=True) to
+        view the boundary indices of your grid.
+
+    Arguments:
+        grid: A Multiblock object
+        bd_indices: A list of boundary indices.
+        n: The number of interior nodes orthogonal to the boundaries to select.
+    """
     boundaries = grid.get_boundaries()
     shapes = grid.get_shapes()
     indices = []
@@ -181,16 +180,16 @@ def boundary_layer_selection(grid, bd_indices, n):
 
         if side == 'w':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(n), range(Ny))]
+                        itertools.product(range(n), range(Ny-1))]
         if side == 's':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(Nx), range(n)) ]
+                        itertools.product(range(Nx-1), range(n)) ]
         if side == 'e':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(Nx-1,Nx-n,-1), range(Ny)) ]
+                        itertools.product(range(Nx-2,Nx-n,-1), range(Ny)) ]
         if side == 'n':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(Nx), range(Ny-1, Ny-n, -1)) ]
+                        itertools.product(range(Nx), range(Ny-2, Ny-n, -1)) ]
 
     return indices
 

@@ -225,8 +225,12 @@ class AdvectionDiffusionSolver:
     def _compute_temporal_derivative(self):
         a = self.velocity[0]
         b = self.velocity[1]
-        self.Ut = [ -(a*ux + b*uy) + self.eps*(uxx + uyy) for (ux,uy,uxx,uyy) in
-                   zip(self.Ux, self.Uy, self.Uxx, self.Uyy) ]
+        #self.Ut = [ -(a*ux + b*uy) + self.eps*(uxx + uyy) for (ux,uy,uxx,uyy) in
+        #           zip(self.Ux, self.Uy, self.Uxx, self.Uyy) ]
+
+        for blk_idx in range(self.grid.num_blocks):
+            self.Ut[blk_idx] = -a*self.Ux[blk_idx]-b*self.Uy[blk_idx]+\
+                self.eps*(self.Uxx[blk_idx] + self.Uyy[blk_idx])
 
         if self.mms:
             source_term = [self.ut(self.t,X,Y) +
@@ -378,7 +382,7 @@ class AdvectionDiffusionSolver:
 
         eval_pts = np.linspace(tspan[0], tspan[1], int(30*(tspan[1]-tspan[0])))
         self.sol = integrate.solve_ivp(f, tspan, init,
-                                       rtol=1e-12, atol=1e-12,
+                                       rtol=1e-10, atol=1e-10,
                                        t_eval=eval_pts)
 
 

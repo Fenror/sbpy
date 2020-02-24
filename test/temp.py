@@ -12,7 +12,7 @@ from sbpy import utils
 
 
 #blocks = grid2d.load_p3d('cyl50.p3d')
-N = 21
+N = 51
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),

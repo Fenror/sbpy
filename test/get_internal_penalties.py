@@ -13,7 +13,7 @@ from sbpy import utils
 from sbpy import gui
 
 
-N = 81
+N = 161
 blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
           utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
@@ -63,6 +63,6 @@ import pickle
 #with open('int_data.pkl', 'wb') as f:
 #    pickle.dump([int_data, int_idx], f)
 
-with open('highres_sol.pkl', 'wb') as f:
+with open('highres_sol161.pkl', 'wb') as f:
     pickle.dump([U_highres], f)
 
