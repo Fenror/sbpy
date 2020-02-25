@@ -7,7 +7,6 @@ from scipy import integrate
 from sbpy import operators
 from sbpy import grid2d
 from sbpy import utils
-from sbpy import animation
 from scipy.stats import norm
 
 if utils.is_interactive():
