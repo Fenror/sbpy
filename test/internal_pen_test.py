@@ -1,17 +1,11 @@
 import sys
 sys.path.append('..')
-import time
 import pickle
 import numpy as np
-from scipy.stats import norm
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from sbpy import operators
 from sbpy import grid2d
 from sbpy import multiblock_solvers
 from sbpy import animation
 from sbpy import utils
-from sbpy import gui
 
 with open('highres_sol161.pkl', 'rb') as f:
     U_highres, = pickle.load(f)
@@ -24,19 +18,11 @@ diffusion = 0.01
 tspan = (0.0, 3.5)
 
 N = 21
-blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
-grid2d.collocate_corners(blocks)
+blocks = utils.get_annulus_grid(N)
 coarse_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 
 N = 161
-blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-          utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
-grid2d.collocate_corners(blocks)
+blocks = utils.get_annulus_grid(N)
 fine_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
 
 nodes = utils.boundary_layer_selection(coarse_grid, [1,3,5,7], 4)
