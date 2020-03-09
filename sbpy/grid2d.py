@@ -112,42 +112,7 @@ class Multiblock:
     """ Represents a structured multiblock grid.
 
     Attributes:
-        blocks: A list of pairs of 2D numpy arrays containing x- and y-values for
-            each block.
-
-        block_interfaces: A list of dictionaries containing the interfaces for each
-            block. For example, if interfaces[i] = {'n': (j, 'w')}, then
-            the northern boundary of the block i coincides with the
-            western boundary of the western boundary of block j.
-
-        boundaries: A list of pairs of the form (k,s), where k is the block index
-            and s is the side constituting an external boundary.
-
-        corners: A list of unique corners in the grid.
-
-        edges: A list pairs of indices to the corners list, defining all the
-            unique edges in grid connectivity graph.
-
-        faces: A list of index-quadruples defining the blocks. For example, if
-            faces[n] = [i,j,k,l], and (X,Y) are the matrices corresponding to
-            block n, then (X[0,0],Y[0,0]) = corners[i]
-                          (X[-1,0],Y[-1,0]) = corners[j]
-                          (X[-1,-1],Y[-1,-1]) = corners[k]
-                          (X[0,-1],Y[0,-1]) = corners[l]
-
-        face_edges: A list of dicts specifying the edges of each face in the
-            grid connectivity graph. For example, if
-            face_edges[n] = {'s': 1, 'e': 5, 'n': 3, 'w': 0}, then the
-            southern boundary of the n:th face is edge 1, and so on.
-
-        interfaces: A list of pairs of the form ( (k1, s1), (k2, s2) ), where
-            k1, k2 are the indices of the blocks connected to the interface, and
-            s1, s2 are the sides of the respective blocks that make up the
-            interface.
-
         num_blocks: The total number of blocks in the grid.
-
-        shapes: A list of pairs (Nx, Ny) representing the shape of each block.
     """
 
     def __init__(self, blocks):
@@ -362,6 +327,7 @@ class Multiblock:
                 x,y = get_boundary(X,Y,side)
                 ax.plot(x,y,'k',linewidth=3)
 
+        ax.axis('equal')
         plt.show()
 
 
@@ -426,6 +392,7 @@ class Multiblock:
                 ax.text(xc, yc, str(if_idx), fontsize=20,
                         fontweight='bold')
 
+        ax.axis('equal')
         plt.show()
 
 
@@ -472,11 +439,8 @@ class Multiblock:
 
 
 class MultiblockSBP(Multiblock):
-    """ A class combining Multiblock functionality and SBP2D functionality.
+    """ A class combining Multiblock functionality and SBP2D functionality.  """
 
-    Attributes:
-        sbp_ops: A list of SBP2D object corresponding to each block.
-    """
     def __init__(self, blocks, accuracy = 2):
         """ Initializes a MultiblockSBP object.
         Args:
@@ -509,6 +473,11 @@ class MultiblockSBP(Multiblock):
     def get_normals(self, block_idx, side):
         """ Get the normals of a specified side of a particular block. """
         return self.sbp_ops[block_idx].normals[side]
+
+
+    def get_sbp_ops(self):
+        """ Returns a list of SBP2D objects associated to each block. """
+        return self.sbp_ops
 
 
 def load_p3d(filename):

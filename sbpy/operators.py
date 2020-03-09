@@ -6,7 +6,14 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 
 class SBP1D:
-    """ Class representing a 1D finite difference SBP operator. """
+    """ Class representing a 1D finite difference SBP operator.
+
+    Attributes:
+        P: Quadrature matrix.
+        Q: An almost skew-symmetric matrix (Q+Q^T = diag(-1,0,0,...,1)), such
+            that P^(-1)Q is an SBP operator.
+        D: The SBP operator P^(-1)Q.
+    """
 
     def __init__(self, N, dx, accuracy = 2):
         """ Initializes an SBP1D object.
