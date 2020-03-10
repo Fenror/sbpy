@@ -18,38 +18,6 @@ else:
 _SIDES = ['s', 'e', 'n', 'w']
 
 
-def solve_ivp_pbar(tspan):
-    """ Returns a decorator used with solve_ivp to get a progress bar.
-
-    Args:
-        tspan: The tspan argument passed to solve_ivp
-
-    Example:
-        tspan = (0.0, 1.5)
-
-        @solve_ivp_bar(tspan)
-        def f(t,y):
-            ...
-            return y_derivative
-
-        sol = solve_ivp(f, tspan, some_initial_data)
-    """
-    def decorator(f):
-        def new_f(t,y):
-            if t - new_f.prev_t > (tspan[1]-tspan[0])/100 and t < tspan[1]:
-                progress = (t-tspan[0])/(tspan[1]-tspan[0])*100
-                new_f.pbar.n = int(np.ceil(progress))
-                new_f.prev_t = t
-                new_f.pbar.refresh()
-            return f(t,y)
-
-        new_f.pbar = tqdm(total=100)
-        new_f.prev_t = tspan[0]
-
-        return new_f
-    return decorator
-
-
 class AdvectionDiffusionSolver:
     """ A multiblock linear scalar advection-diffusion solver.
 
@@ -79,12 +47,12 @@ class AdvectionDiffusionSolver:
 
         self.grid = grid
         self.t = 0
-        self.U   = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        self.Ux  = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        self.Uy  = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        self.Uxx = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        self.Uyy = [ np.zeros(shape) for shape in grid.get_shapes() ]
-        self.Ut  = [ np.zeros(shape) for shape in grid.get_shapes() ]
+        self.U   = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
+        self.Ux  = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
+        self.Uy  = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
+        self.Uxx = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
+        self.Uyy = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
+        self.Ut  = np.array([ np.zeros(shape) for shape in grid.get_shapes() ])
         self.mms = False
 
         if 'diffusion' in kwargs:
@@ -221,15 +189,16 @@ class AdvectionDiffusionSolver:
         self.Uyy = self.grid.diffy(self.Uy)
 
 
+    def _differential_operator(self):
+        a = self.velocity[0]
+        b = self.velocity[1]
+        return -a*self.Ux-b*self.Uy+self.eps*(self.Uxx+self.Uyy)
+
+
     def _compute_temporal_derivative(self):
         a = self.velocity[0]
         b = self.velocity[1]
-        #self.Ut = [ -(a*ux + b*uy) + self.eps*(uxx + uyy) for (ux,uy,uxx,uyy) in
-        #           zip(self.Ux, self.Uy, self.Uxx, self.Uyy) ]
-
-        for blk_idx in range(self.grid.num_blocks):
-            self.Ut[blk_idx] = -a*self.Ux[blk_idx]-b*self.Uy[blk_idx]+\
-                self.eps*(self.Uxx[blk_idx] + self.Uyy[blk_idx])
+        self.Ut = self._differential_operator()
 
         if self.mms:
             source_term = [self.ut(self.t,X,Y) +
@@ -295,8 +264,8 @@ class AdvectionDiffusionSolver:
             normals  = self.grid.get_normals(block_idx, side)
             flow_vel = self.flow_velocity[block_idx][side]
             flux     = normals[:,0]*ux + normals[:,1]*uy
+            (x,y)    = self.grid.get_boundary(block_idx,side)
             (X,Y)    = self.grid.get_block(block_idx)
-            (x,y)    = grid2d.get_boundary(X,Y,side)
 
             if self.mms:
                 u_exact     = self.u(self.t,x,y)
@@ -369,8 +338,10 @@ class AdvectionDiffusionSolver:
     def solve(self, tspan):
         init = grid2d.multiblock_to_array(self.grid, self.U)
 
-        @solve_ivp_pbar(tspan)
+        pbar = tqdm(total=100, leave=False)
         def f(t, y):
+            pbar.n = int((100*(t-tspan[0])/(tspan[1]-tspan[0])))
+            pbar.update()
             U = grid2d.array_to_multiblock(self.grid, y)
             self.t = t
             self._update_sol(U)
@@ -383,6 +354,7 @@ class AdvectionDiffusionSolver:
         self.sol = integrate.solve_ivp(f, tspan, init,
                                        rtol=1e-10, atol=1e-10,
                                        t_eval=eval_pts)
+        pbar.close()
 
 
     def run_mms_test(self, tspan):

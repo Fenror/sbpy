@@ -57,6 +57,7 @@ def get_boundary(X,Y,side):
     elif side == 'n':
         return X[:,-1], Y[:,-1]
 
+
 def get_function_boundary(F,side):
     """ Returns the boundary of a grid function. """
 
@@ -108,7 +109,7 @@ def multiblock_to_array(grid, F):
     return np.array(F).flatten()
 
 
-class Multiblock:
+class MultiblockGrid:
     """ Represents a structured multiblock grid.
 
     Attributes:
@@ -205,6 +206,13 @@ class Multiblock:
         self.num_boundaries = len(self.boundaries)
         self.boundary_info = [ None for _ in self.boundaries ]
 
+        # Save boundary slices
+        self.bd_slice_dicts = \
+                [{'s': (slice(Nx), 0),
+                 'e': (-1, slice(Ny)),
+                 'n': (slice(Nx), -1),
+                 'w': (0, slice(Ny))} for (Nx,Ny) in self.shapes]
+
 
     def evaluate_function(self, f):
         """ Evaluates a (vectorized) function on the grid. """
@@ -237,20 +245,13 @@ class Multiblock:
         then F[slice] will refer to the western boundary of F.
 
         Args:
-            F: A grid function.
+            k: A block index.
             side: The side at which the boundary is located ('s', 'e', 'n', or 'w')
 
         Returns:
             slice: A slice that can be used to index the given boundary in F.
         """
-        assert(side in _SIDES)
-        (Nx, Ny) = self.shapes[k]
-        slice_dict = {'s': (slice(Nx), 0),
-                      'e': (-1, slice(Ny)),
-                      'n': (slice(Nx), -1),
-                      'w': (0, slice(Ny))}
-
-        return slice_dict[side]
+        return self.bd_slice_dicts[k][side]
 
 
     def get_interfaces(self):
@@ -268,6 +269,19 @@ class Multiblock:
         i coincides with the western boundary of the western boundary of block j.
         """
         return self.block_interfaces
+
+
+    def get_boundary(self, block_idx, side):
+        """ Returns a pair (x,y) of numpy arrays representing the boundary nodes
+        of the specified boundary.
+
+        Arguments:
+            block_idx: The index of the block.
+            side: The boundary side ('w','e','s', or 'n')
+        """
+        bd_slice = self.get_boundary_slice(block_idx, side)
+        X,Y = self.blocks[block_idx]
+        return (X[bd_slice],Y[bd_slice])
 
 
     def get_boundaries(self):
@@ -438,8 +452,8 @@ class Multiblock:
         return self.boundary_info[boundary_index]
 
 
-class MultiblockSBP(Multiblock):
-    """ A class combining Multiblock functionality and SBP2D functionality.  """
+class MultiblockGridSBP(MultiblockGrid):
+    """ A class combining MultiblockGrid functionality and SBP2D functionality.  """
 
     def __init__(self, blocks, accuracy = 2):
         """ Initializes a MultiblockSBP object.
@@ -458,12 +472,14 @@ class MultiblockSBP(Multiblock):
 
     def diffx(self, U):
         """ Differentiates a Multiblock function with respect to x. """
-        return [ self.sbp_ops[i].diffx(U[i]) for i in range(self.num_blocks) ]
+        return np.array([ self.sbp_ops[i].diffx(U[i]) for
+                          i in range(self.num_blocks) ])
 
 
     def diffy(self, U):
         """ Differentiates a Multiblock function with respect to y. """
-        return [ self.sbp_ops[i].diffy(U[i]) for i in range(self.num_blocks) ]
+        return np.array([ self.sbp_ops[i].diffy(U[i]) for
+                          i in range(self.num_blocks) ])
 
     def integrate(self, U):
         """ Integrates a Multiblock function over the domain. """

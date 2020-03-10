@@ -14,7 +14,7 @@ from sbpy import utils
 N = 21
 blocks = utils.get_annulus_grid(N)
 grid2d.collocate_corners(blocks)
-grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
 init = [ np.zeros(shape) for shape in grid.get_shapes() ]
 #for (k, (X,Y)) in enumerate(grid.get_blocks()):
 #    init[k] = 0.1*norm.pdf(X,loc=-0.5,scale=0.2)*norm.pdf(Y,loc=0.5,scale=0.2)
@@ -26,7 +26,7 @@ def h(t,x,y):
     return 0
 
 velocity = np.array([1,1])/np.sqrt(2)
-diffusion = 0.1
+diffusion = 0.01
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(grid, initial_data=init,
                                                      velocity=velocity,
@@ -47,4 +47,4 @@ U = []
 for frame in np.transpose(solver.sol.y):
     U.append(grid2d.array_to_multiblock(grid, frame))
 
-animation.animate_multiblock(grid, U, stride=1)
+#animation.animate_multiblock(grid, U, stride=1)

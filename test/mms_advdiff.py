@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 import numpy as np
 from sbpy import operators
 from sbpy import grid2d
@@ -41,7 +41,7 @@ for N in resolutions:
               utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
               utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
     grid2d.collocate_corners(blocks)
-    grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+    grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
     solver = multiblock_solvers.AdvectionDiffusionSolver(grid,
                                                          u=u, ux=ux, uxx=uxx,
                                                          uy=uy, uyy=uyy, ut=ut)
