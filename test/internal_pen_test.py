@@ -6,6 +6,7 @@ from sbpy import grid2d
 from sbpy import multiblock_solvers
 from sbpy import animation
 from sbpy import utils
+from mayavi import mlab
 
 with open('highres_sol161.pkl', 'rb') as f:
     U_highres, = pickle.load(f)

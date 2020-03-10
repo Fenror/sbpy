@@ -1,9 +1,9 @@
 """This module contains functions for getting SBP operators."""
 
-from sbpy import grid2d
 import numpy as np
 from scipy import sparse
 import matplotlib.pyplot as plt
+from sbpy import grid2d
 
 class SBP1D:
     """ Class representing a 1D finite difference SBP operator.

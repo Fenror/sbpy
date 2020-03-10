@@ -2,7 +2,6 @@
 
 import itertools
 import numpy as np
-import sys
 from mayavi import mlab
 
 
