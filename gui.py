@@ -2,6 +2,9 @@
 objects. """
 
 import itertools
+import sys
+sys.path.append("..")
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import widgets
@@ -12,8 +15,8 @@ from sbpy import utils
 
 
 class NodeSelector:
-    """ A class for visually selecting nodes from a Multiblock object.
-    Initialize with a Multiblock object, NodeSelector(grid). A NodeSelector is
+    """ A class for visually selecting nodes from a MultiblockGrid object.
+    Initialize with a MultiblockGrid object, NodeSelector(grid). A NodeSelector is
     callable--run it without argument to show the selection window. Once you have
     selected your nodes, they will be stored in the nodes list. """
 
@@ -33,6 +36,7 @@ class NodeSelector:
         self.ax.scatter(self.x_points, self.y_points, c=colors, picker=5)
 
         self.pt_collection = self.ax.collections[0]
+        self.ax.axis('equal')
 
     def _flat_to_multi_idx(self, idx):
         block = 0
@@ -108,24 +112,24 @@ class NodeSelector:
 
 
 if __name__ == '__main__':
-    N = 11
-    blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
-              utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
-              utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
-              utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
-    grid2d.collocate_corners(blocks)
-    coarse_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
-    selector = NodeSelector(coarse_grid)
-    selector()
-
-
     N = 21
     blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
               utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
               utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
               utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
     grid2d.collocate_corners(blocks)
-    fine_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+    coarse_grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
+    selector = NodeSelector(coarse_grid)
+    selector()
+
+
+    N = 41
+    blocks = [utils.get_circle_sector_grid(N, 0, 0.5*np.pi, 0.2, 1.0),
+              utils.get_circle_sector_grid(N, 0.5*np.pi, np.pi, 0.2, 1.0),
+              utils.get_circle_sector_grid(N, np.pi, 1.5*np.pi, 0.2, 1.0),
+              utils.get_circle_sector_grid(N, 1.5*np.pi, 2*np.pi, 0.2, 1.0)]
+    grid2d.collocate_corners(blocks)
+    fine_grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
 
     F = [ X + Y for X,Y in fine_grid.get_blocks() ]
 

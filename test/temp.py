@@ -35,7 +35,7 @@ solver.set_boundary_condition(1,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(3,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(5,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(7,{'type': 'dirichlet', 'data': g})
-tspan = (0.0, 5.0)
+tspan = (0.0, 4.0)
 import time
 
 start = time.time()
@@ -47,4 +47,4 @@ U = []
 for frame in np.transpose(solver.sol.y):
     U.append(grid2d.array_to_multiblock(grid, frame))
 
-#animation.animate_multiblock(grid, U, stride=1)
+animation.animate_multiblock(grid, U, stride=1)

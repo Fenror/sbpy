@@ -180,10 +180,10 @@ def boundary_layer_selection(grid, bd_indices, n):
 
         if side == 'w':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(n), range(Ny-1))]
+                        itertools.product(range(n), range(Ny))]
         if side == 's':
             indices = indices + [ (blk_idx, i, j) for i,j in
-                        itertools.product(range(Nx-1), range(n)) ]
+                        itertools.product(range(Nx), range(n)) ]
         if side == 'e':
             indices = indices + [ (blk_idx, i, j) for i,j in
                         itertools.product(range(Nx-2,Nx-n,-1), range(Ny)) ]

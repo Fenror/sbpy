@@ -21,6 +21,7 @@ sequence of grids constituting a multiblock grid.
 
 from enum import Enum
 import itertools
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc

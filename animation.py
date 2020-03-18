@@ -51,9 +51,9 @@ def animate_multiblock(grid, F, **kwargs):
                 s.mlab_source.trait_set(z=f_block[::stride, ::stride])
             yield
 
-    mlab.axes(x_axis_visibility = True,
-              y_axis_visibility = True,
-              z_axis_visibility = True,
+    mlab.axes(x_axis_visibility = False,
+              y_axis_visibility = False,
+              z_axis_visibility = False,
               extent=[xmin,xmax,ymin,ymax,Fmin,Fmax])
 
     frame_gen = anim()
