@@ -4,7 +4,6 @@ import numpy as np
 from sbpy import operators
 from sbpy import grid2d
 from sbpy import multiblock_solvers
-from sbpy import animation
 from sbpy import utils
 
 

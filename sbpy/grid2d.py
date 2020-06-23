@@ -2,7 +2,7 @@
 conceptual framework used throughout the module is that 2D numpy arrays represent
 function evaluations associated to some grid. For example, if f is an Nx-by-Ny
 numpy array, then f[i,j] is interpreted as the evaluation of some function f in
-an associated grid node (x_ij, y_ij). 2D numpy arrays representing function
+an associated grid node (x_i, y_j). 2D numpy arrays representing function
 evaluations on a grid are called 'grid functions'. We refer to the boundaries of
 a grid function as 's' for south, 'e' for east, 'n' for north, and 'w' for west.
 More precisely the boundaries of a grid function f are
