@@ -1,5 +1,7 @@
 """This module contains functions for getting SBP operators."""
 
+import pdb
+
 import numpy as np
 from scipy import sparse
 import matplotlib.pyplot as plt
@@ -141,6 +143,7 @@ class SBP2D:
                                    self.Xeta @ self.Dxi -
                                    self.Dxi @ self.Xeta)
         self.P = self.J@sparse.kron(self.sbp_xi.P, self.sbp_eta.P)
+        self.Pinv = sparse.diags(1/self.P.data)
 
         # Save matrix version of volume quadrature.
         self.volume_quadrature = np.reshape(self.P.diagonal(),

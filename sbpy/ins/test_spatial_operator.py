@@ -11,7 +11,7 @@ from ins import spatial_operator
 grid = MultiblockGrid([(X,Y)])
 sbp = MultiblockSBP(grid)
 
-l1,l2,l3 = spatial_operator(sbp, np.array([X]), np.array([Y]), np.array([Y]), 0.1)
+l1,l2,l3 = spatial_operator(sbp, np.array([X]), np.array([Y]), np.array([Y]))
 
 plt.quiver(X, Y, -l1[0], -l2[0])
 plt.show()

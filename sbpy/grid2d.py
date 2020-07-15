@@ -483,14 +483,28 @@ class MultiblockSBP:
         return np.array([ sbp.diffy(u) for
                           sbp,u in zip(self.sbp_ops, U) ])
 
+
     def integrate(self, U):
         """ Integrates a Multiblock function over the domain. """
         return sum([ sbp.integrate(u) for
                      sbp,u in zip(self.sbp_ops, U) ])
 
+
     def get_normals(self, block_idx, side):
         """ Get the normals of a specified side of a particular block. """
         return self.sbp_ops[block_idx].normals[side]
+
+
+    def get_pinv(self, block_idx, side):
+        """ Get the inverse of the volume quadrature at a specified side
+        of a particular block. """
+        return self.sbp_ops[block_idx].pinv[side]
+
+
+    def get_boundary_quadrature(self, block_idx, side):
+        """ Get the boundary quadrature at a specified side of a particular
+        block. """
+        return self.sbp_ops[block_idx].boundary_quadratures[side]
 
 
     def get_sbp_ops(self):
