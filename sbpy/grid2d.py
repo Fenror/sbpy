@@ -341,6 +341,7 @@ class MultiblockGrid:
             for side in {'w', 'e', 's', 'n'}:
                 x,y = get_boundary(X,Y,side)
                 ax.plot(x,y,'k',linewidth=3)
+                ax.text(np.mean(x),np.mean(y),side)
 
         ax.axis('equal')
         plt.show()

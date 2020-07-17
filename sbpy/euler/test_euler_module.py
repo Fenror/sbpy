@@ -1,4 +1,5 @@
 import unittest
+import pdb
 
 import numpy as np
 from scipy import sparse
@@ -6,7 +7,7 @@ from scipy.optimize import approx_fprime
 
 from sbpy.utils import get_circle_sector_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
-from euler import euler_operator, wall_operator
+from euler import euler_operator, wall_operator, outflow_operator, pressure_operator
 
 class TestSpatialOperator(unittest.TestCase):
 
@@ -42,30 +43,31 @@ class TestSpatialOperator(unittest.TestCase):
             print("Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
-    def test_case1(self):
 
-        S1,J1 = euler_operator(self.sbp, self.state)
-        S2,J2 = wall_operator(self.sbp, self.state, 0, 'w')
-        S3,J3 = wall_operator(self.sbp, self.state, 0, 'e')
-        S4,J4 = wall_operator(self.sbp, self.state, 0, 's')
-        S5,J5 = wall_operator(self.sbp, self.state, 0, 'n')
-        J = J1+J2+J3+J4+J5
+    def test_pressure_jacobian(self):
+        S, J = outflow_operator(self.sbp, self.state, 0, 'w')
+        J = J.todense()
 
         for i,grad in enumerate(J):
-            def f(x):
-                S1,J1 = euler_operator(self.sbp, x)
-                S2,J2 = wall_operator(self.sbp, x, 0, 'w')
-                S3,J3 = wall_operator(self.sbp, x, 0, 'e')
-                S4,J4 = wall_operator(self.sbp, x, 0, 's')
-                S5,J5 = wall_operator(self.sbp, x, 0, 'n')
-                return (S1+S2+S3+S4+S5)[i]
-
+            f = lambda x: pressure_operator(self.sbp, x, 0, 'w')[0][i]
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
             print("Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
+
+    def test_outflow_jacobian(self):
+        S, J = outflow_operator(self.sbp, self.state, 0, 'w')
+        J = J.todense()
+
+        for i,grad in enumerate(J):
+            f = lambda x: outflow_operator(self.sbp, x, 0, 'w')[0][i]
+            grad_approx = approx_fprime(self.state, f, 1e-8)
+            grad_exact = J[i,:]
+            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
+            print("Gradient error = {:.2e}".format(err))
+            self.assertTrue(err < 1e-5)
 
 
 if __name__ == '__main__':

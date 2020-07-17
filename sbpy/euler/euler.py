@@ -162,6 +162,116 @@ def wall_operator(sbp, state, block_idx, side):
     return np.array([S,J], dtype=object)
 
 
+def pressure_operator(sbp, state, block_idx, side):
+    u,v,p = vec_to_tensor(sbp.grid, state)
+    bd_slice = sbp.grid.get_boundary_slice(block_idx, side)
+    normals = sbp.get_normals(block_idx, side)
+    nx = normals[:,0]
+    ny = normals[:,1]
+    p_bd = p[block_idx][bd_slice]
+
+    pinv = sbp.get_pinv(block_idx, side)
+    bd_quad = sbp.get_boundary_quadrature(block_idx, side)
+    lift = pinv*bd_quad
+
+    Nx,Ny = sbp.grid.get_shapes()[0]
+    num_blocks = sbp.grid.num_blocks
+    s1 = np.zeros((num_blocks,Nx,Ny))
+    s1[block_idx][bd_slice] = -lift*nx*(p_bd-1)
+    s2 = np.zeros((num_blocks,Nx,Ny))
+    s2[block_idx][bd_slice] = -lift*ny*(p_bd-1)
+    s3 = np.zeros((num_blocks,Nx,Ny))
+
+    S = np.array([s1, s2, s3]).flatten()
+
+    #Jacobian
+    ds1du = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds1dv = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds1dp = np.zeros((Nx,Ny))
+    ds1dp[bd_slice] = lift*nx
+    ds1dp = sparse.diags(ds1dp.flatten())
+
+    ds2du = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds2dv = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds2dp = np.zeros((Nx,Ny))
+    ds2dp[bd_slice] = lift*ny
+    ds2dp = sparse.diags(ds2dp.flatten())
+
+    ds3du = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dv = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dp = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+
+
+    J = -sparse.bmat([[ds1du, ds1dv, ds1dp],
+                      [ds2du, ds2dv, ds2dp],
+                      [ds3du, ds3dv, ds3dp]])
+
+    return np.array([S,J], dtype=object)
+
+
+def outflow_operator(sbp, state, block_idx, side):
+    u,v,p = vec_to_tensor(sbp.grid, state)
+    bd_slice = sbp.grid.get_boundary_slice(block_idx, side)
+    normals = sbp.get_normals(block_idx, side)
+    nx = normals[:,0]
+    ny = normals[:,1]
+    u_bd = u[block_idx][bd_slice]
+    v_bd = v[block_idx][bd_slice]
+    p_bd = p[block_idx][bd_slice]
+    wn = u_bd*nx + v_bd*ny
+
+    pinv = sbp.get_pinv(block_idx, side)
+    bd_quad = sbp.get_boundary_quadrature(block_idx, side)
+    lift = pinv*bd_quad
+
+    Nx,Ny = sbp.grid.get_shapes()[0]
+    num_blocks = sbp.grid.num_blocks
+    s1 = np.zeros((num_blocks,Nx,Ny))
+    s2 = np.zeros((num_blocks,Nx,Ny))
+    s3 = np.zeros((num_blocks,Nx,Ny))
+    s1[block_idx][bd_slice] = -lift*nx*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd)
+    s2[block_idx][bd_slice] = -lift*ny*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd)
+
+    S = np.array([s1, s2, s3]).flatten()
+
+    #Jacobian
+    ds1du = np.zeros((Nx,Ny))
+    ds1du[bd_slice] = nx*lift*u_bd
+    ds1du = sparse.diags(ds1du.flatten())
+
+    ds1dv = np.zeros((Nx,Ny))
+    ds1dv[bd_slice] = nx*lift*v_bd
+    ds1dv = sparse.diags(ds1dv.flatten())
+
+    ds1dp = np.zeros((Nx,Ny))
+    ds1dp[bd_slice] = nx*lift
+    ds1dp = sparse.diags(ds1dp.flatten())
+
+    ds2du = np.zeros((Nx,Ny))
+    ds2du[bd_slice] = ny*lift*u_bd
+    ds2du = sparse.diags(ds2du.flatten())
+
+    ds2dv = np.zeros((Nx,Ny))
+    ds2dv[bd_slice] = ny*lift*v_bd
+    ds2dv = sparse.diags(ds2dv.flatten())
+
+    ds2dp = np.zeros((Nx,Ny))
+    ds2dp[bd_slice] = ny*lift
+    ds2dp = sparse.diags(ds2dp.flatten())
+
+    ds3du = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dv = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dp = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+
+
+    J = -sparse.bmat([[ds1du, ds1dv, ds1dp],
+                      [ds2du, ds2dv, ds2dp],
+                      [ds3du, ds3dv, ds3dp]])
+
+
+    return np.array([S,J], dtype=object)
+
+
 def backward_euler(op, prev_state, dt, tol):
     N = int(len(prev_state)/3)
 
@@ -190,7 +300,7 @@ def backward_euler(op, prev_state, dt, tol):
         delta = sparse.linalg.spsolve(J,L)
         new_state -= delta
 
-    print("Error: {:.2e}".format(err))
+    #print("Error: {:.2e}".format(err))
     return new_state
 
 
