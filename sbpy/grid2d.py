@@ -512,6 +512,16 @@ class MultiblockSBP:
         return self.sbp_ops
 
 
+    def get_Dx(self, block_idx):
+        """ Get Dx for a given block. """
+        return self.sbp_ops[block_idx].Dx
+
+
+    def get_Dy(self, block_idx):
+        """ Get Dy for a given block. """
+        return self.sbp_ops[block_idx].Dy
+
+
 
 class MultiblockGridSBP(MultiblockGrid):
     """ A class combining MultiblockGrid functionality and SBP2D functionality.  """

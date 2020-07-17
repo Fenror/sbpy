@@ -24,8 +24,8 @@ def spatial_operator(sbp, u, v, p):
     l3 = dudx + dvdy
 
     #Jacobian
-    Dx = sbp.get_sbp_ops()[0].Dx
-    Dy = sbp.get_sbp_ops()[0].Dy
+    Dx = sbp.get_Dx(0)
+    Dy = sbp.get_Dy(0)
     U = sparse.diags(u[0].flatten())
     V = sparse.diags(v[0].flatten())
     Ux = sparse.diags(dudx.flatten())
@@ -104,21 +104,27 @@ def spatial_operator(sbp, u, v, p):
 
 
 def F(sbp, vec, u0, v0, dt):
-    U,V,P = flat_to_struct(sbp.grid, vec)
-    L0,J0 = spatial_operator(sbp, U[0], V[0], P[0])
-    L1,J1 = spatial_operator(sbp, U[1], V[1], P[1])
+    (Nx,Ny) = sbp.grid.get_shapes()[0]
+    vec = np.reshape(vec, (2,3,1,Nx,Ny))
+    ucur = vec[0][0]
+    vcur = vec[0][1]
+    pcur = vec[0][2]
+    unext = vec[1][0]
+    vnext = vec[1][1]
+    pnext = vec[1][2]
+    L0,J0 = spatial_operator(sbp, ucur, vcur, pcur)
+    L1,J1 = spatial_operator(sbp, unext, vnext, pnext)
 
-    T = np.array([(U[1][0] - U[0][0])/dt + 0.25*(U[0][0] - u0)/dt,
-                 (V[1][0] - V[0][0])/dt + 0.25*(V[0][0] - v0)/dt,
-                 np.zeros(P[0][0].shape),
-                 (U[1][0] - U[0][0])/dt,
-                 (V[1][0] - V[0][0])/dt,
-                 np.zeros(P[0][0].shape)]).flatten()
+    T = np.array([(unext - ucur)/dt + 0.25*(ucur - u0)/dt,
+                 (vnext - vcur)/dt + 0.25*(vcur - v0)/dt,
+                 np.zeros((1,Nx,Ny)),
+                 (unext - ucur)/dt,
+                 (vnext - vcur)/dt,
+                 np.zeros((1,Nx,Ny))]).flatten()
 
     S = np.array([L0, L1]).flatten()
 
     #Jacobian
-    (Nx,Ny) = U[0][0].shape
     M = Nx*Ny
     I = sparse.identity(M)
     O = sparse.csr_matrix((M,M))
@@ -131,6 +137,33 @@ def F(sbp, vec, u0, v0, dt):
 
     J = Jt + sparse.bmat([[J0, None],
                           [None, J1]])
+
+    return T+S, J
+
+
+def Ftest(sbp, vec, uprev, vprev, dt):
+    (Nx,Ny) = sbp.grid.get_shapes()[0]
+    vec = np.reshape(vec, (3,1,Nx,Ny))
+    unext = vec[0]
+    vnext = vec[1]
+    pnext = vec[2]
+    L1,J1 = spatial_operator(sbp, unext, vnext, pnext)
+
+    T = np.array([(unext - uprev)/dt,
+                 (vnext - vprev)/dt,
+                 np.zeros((1,Nx,Ny))]).flatten()
+
+    S = np.array([L1]).flatten()
+
+    #Jacobian
+    M = Nx*Ny
+    I = sparse.identity(M)
+    O = sparse.csr_matrix((M,M))
+    Jt = (1/dt)*sparse.bmat([[I, O, O],
+                             [O, I, O],
+                             [O, O, O]])
+
+    J = Jt + J1
 
     return T+S, J
 

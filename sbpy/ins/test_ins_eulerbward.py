@@ -8,13 +8,12 @@ import scipy
 
 from sbpy.utils import get_circle_sector_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
-from ins import spatial_operator, F, flat_to_struct
+from ins import spatial_operator, Ftest
 
 Nx = 25
 Ny = 25
 
 (X,Y) = get_circle_sector_grid(Nx, 0.0, 3.14/2, 0.2, 1.0)
-#(X,Y) = np.meshgrid(np.linspace(0,1,Nx),np.linspace(0,1,Ny))
 grid = MultiblockGrid([(X,Y)])
 sbp = MultiblockSBP(grid)
 
@@ -22,10 +21,10 @@ dt = 0.1
 
 rv = scipy.stats.multivariate_normal([0.4, 0.4], 0.01*np.eye(2))
 bla = rv.pdf(np.dstack((X,Y)))
+initu = np.array([Y])
+initv = -np.array([X])
 #initu = 0.0001*np.array([bla])
 #initv = -0.0001*np.array([bla])
-initu = 0.1*np.array([Y])
-initv = -0.1*np.array([X])
 #initv = np.array([np.zeros(X.shape)])
 initp = np.array([np.ones(X.shape)])
 fig, ax = plt.subplots(1,1)
@@ -39,11 +38,11 @@ Psol=[]
 Usol=[]
 Vsol=[]
 
-sol = np.array([initu, initv, initp, initu, initv, initp]).flatten()
+sol = np.array([initu, initv, initp]).flatten()
 nt = 30
 for k in range(nt):
     while True:
-        L, J = F(sbp, sol, initu, initv, dt)
+        L, J = Ftest(sbp, sol, initu, initv, dt)
         err = np.linalg.norm(L, ord=np.inf)
         if err < tol:
             break
@@ -52,12 +51,12 @@ for k in range(nt):
 
     print("Iter {}, error: {}".format(k, err))
 
-    sol = np.reshape(sol, (2,3,1,Nx,Ny))
-    Usol.append(sol[0][0][0])
-    Vsol.append(sol[0][1][0])
-    Psol.append(sol[0][2][0])
-    initu = sol[1][0]
-    initv = sol[1][1]
+    sol = np.reshape(sol, (3,1,Nx,Ny))
+    Usol.append(sol[0][0])
+    Vsol.append(sol[1][0])
+    Psol.append(sol[2][0])
+    initu = sol[0]
+    initv = sol[1]
     sol = sol.flatten()
 
 fig, ax = plt.subplots(1,1)
@@ -82,7 +81,7 @@ def update_contour(num, pressure_plot):
 
 anim = animation.FuncAnimation(fig, update_quiver,
                                fargs=(velocity_plot,),
-                               interval=50, blit=False)
+                               interval=1000*dt, blit=False)
 #anim = animation.FuncAnimation(fig, update_contour, fargs=(pressure_plot,), interval=1000*dt, blit=False)
 
 #fig, axes = plt.subplots(1,2)
