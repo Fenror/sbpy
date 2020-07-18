@@ -20,11 +20,15 @@ sbp_in_time function.
 """
 
 import pdb
+import warnings
 
 import numpy as np
+import scipy
 from scipy import sparse
 
 from sbpy import operators
+
+warnings.simplefilter("error")
 
 def vec_to_tensor(grid, vec):
     shapes = grid.get_shapes()
@@ -229,8 +233,8 @@ def outflow_operator(sbp, state, block_idx, side):
     s1 = np.zeros((num_blocks,Nx,Ny))
     s2 = np.zeros((num_blocks,Nx,Ny))
     s3 = np.zeros((num_blocks,Nx,Ny))
-    s1[block_idx][bd_slice] = -lift*nx*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd)
-    s2[block_idx][bd_slice] = -lift*ny*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd)
+    s1[block_idx][bd_slice] = -lift*nx*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd-1)
+    s2[block_idx][bd_slice] = -lift*ny*(0.5*u_bd**2 + 0.5*v_bd**2 + p_bd-1)
 
     S = np.array([s1, s2, s3]).flatten()
 
@@ -291,14 +295,24 @@ def backward_euler(op, prev_state, dt, tol):
         return T+S, Jt+Js
 
     new_state = prev_state.copy()
+    n_iter = 0
     while True:
         L, J = F(new_state, prev_state)
         err = np.linalg.norm(L, ord=np.inf)
         if err < tol:
             break
 
-        delta = sparse.linalg.spsolve(J,L)
+        if err > 1000 or n_iter > 10: #temp magic constant
+            raise Exception("Newton diverging, try decreasing dt.")
+
+        try:
+            delta = sparse.linalg.spsolve(J,L)
+        except sparse.linalg.MatrixRankWarning:
+            #Small perturbation if singular Jacobian
+            delta = np.random.normal(scale=1e-7, size=len(prev_state))
+
         new_state -= delta
+        n_iter += 1
 
     #print("Error: {:.2e}".format(err))
     return new_state
@@ -345,43 +359,5 @@ def sbp_in_time(op, cur_state, dt, tol):
         prev_state -= delta[0:3*N]
         new_state -= delta[3*N:]
 
-    print("Error: {:.2e}".format(err))
+    #print("Error: {:.2e}".format(err))
     return new_state
-
-
-def F(sbp, vec, u0, v0, dt):
-    (Nx,Ny) = sbp.grid.get_shapes()[0]
-    vec = np.reshape(vec, (2,3,1,Nx,Ny))
-    ucur = vec[0][0]
-    vcur = vec[0][1]
-    pcur = vec[0][2]
-    unext = vec[1][0]
-    vnext = vec[1][1]
-    pnext = vec[1][2]
-    L0,J0 = spatial_operator(sbp, ucur, vcur, pcur)
-    L1,J1 = spatial_operator(sbp, unext, vnext, pnext)
-
-    T = np.array([(unext - ucur)/dt + 0.25*(ucur - u0)/dt,
-                 (vnext - vcur)/dt + 0.25*(vcur - v0)/dt,
-                 np.zeros((1,Nx,Ny)),
-                 (unext - ucur)/dt,
-                 (vnext - vcur)/dt,
-                 np.zeros((1,Nx,Ny))]).flatten()
-
-    S = np.array([L0, L1]).flatten()
-
-    #Jacobian
-    M = Nx*Ny
-    I = sparse.identity(M)
-    O = sparse.csr_matrix((M,M))
-    Jt = (1/dt)*sparse.bmat([[-0.75*I,       O, O, I, O, O],
-                             [      O, -0.75*I, O, O, I, O],
-                             [      O,       O, O, O, O, O],
-                             [     -I,       O, O, I, O, O],
-                             [      O,      -I, O, O, I, O],
-                             [      O,       O, O, O, O, O]])
-
-    J = Jt + sparse.bmat([[J0, None],
-                          [None, J1]])
-
-    return T+S, J
