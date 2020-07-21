@@ -12,23 +12,34 @@ from sbpy.grid2d import MultiblockGrid, MultiblockSBP
 from euler import euler_operator, wall_operator, backward_euler, vec_to_tensor, outflow_operator, pressure_operator, sbp_in_time
 from animation import animate_pressure, animate_velocity, animate_solution
 
-Nx = 55
-Ny = 55
+Nx = 25
+Ny = 25
 
-(X,Y) = get_circle_sector_grid(Nx, 0.0, 3.14, 0.2, 1.0)
-#(X,Y) = np.meshgrid(np.linspace(0,1,Nx), np.linspace(0,1,Ny))
+#(X,Y) = get_circle_sector_grid(Nx, 0.0, 3.14/2, 0.2, 1.0)
+(X,Y) = np.meshgrid(np.linspace(0,1,Nx), np.linspace(0,1,Ny))
 grid = MultiblockGrid([(X,Y)])
 sbp = MultiblockSBP(grid, accuracy=4)
 
 
-initu = np.array([Y])
-initv = -np.array([X])
-rv = scipy.stats.multivariate_normal([0.0, 0.5], 0.01*np.eye(2))
-gauss_bell = rv.pdf(np.dstack((X,Y)))
-#initu = 2*np.array([gauss_bell])/np.max(gauss_bell.flatten())
-initu = -np.array([0*X])
-initv = 2*np.array([gauss_bell])/np.max(gauss_bell.flatten())
-#initv = -np.array([0*X])
+##Rotating velocity field
+#initu = np.array([Y])
+#initv = -np.array([X])
+
+##Colliding whirls
+rv1 = scipy.stats.multivariate_normal([0.3, 0.5], 0.01*np.eye(2))
+gauss_bell1 = rv1.pdf(np.dstack((X,Y)))
+rv2 = scipy.stats.multivariate_normal([0.7, 0.5], 0.01*np.eye(2))
+gauss_bell2 = -rv2.pdf(np.dstack((X,Y)))
+initu = 2*np.array([gauss_bell1 + gauss_bell2])/np.max(gauss_bell1.flatten())
+initv = np.array([0*X])
+
+
+##Gauss bell in V
+#rv = scipy.stats.multivariate_normal([0.0, 0.5], 0.01*np.eye(2))
+#gauss_bell = rv.pdf(np.dstack((X,Y)))
+#initu = -np.array([0*X])
+#initv = 2*np.array([gauss_bell])/np.max(gauss_bell.flatten())
+
 initp = np.array([np.ones(X.shape)])
 plt.quiver(X,Y,initu[0],initv[0])
 plt.show()

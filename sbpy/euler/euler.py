@@ -28,7 +28,6 @@ from scipy import sparse
 
 from sbpy import operators
 
-warnings.simplefilter("error")
 
 def vec_to_tensor(grid, vec):
     shapes = grid.get_shapes()
@@ -306,7 +305,9 @@ def backward_euler(op, prev_state, dt, tol):
             raise Exception("Newton diverging, try decreasing dt.")
 
         try:
-            delta = sparse.linalg.spsolve(J,L)
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                delta = sparse.linalg.spsolve(J,L)
         except sparse.linalg.MatrixRankWarning:
             #Small perturbation if singular Jacobian
             delta = np.random.normal(scale=1e-7, size=len(prev_state))

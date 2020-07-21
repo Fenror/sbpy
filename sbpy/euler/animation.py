@@ -1,5 +1,9 @@
+import pdb
+
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.cm import ScalarMappable
 
 def animate_pressure(grid, P, dt):
     nt = len(P)
@@ -43,6 +47,9 @@ def animate_solution(grid, U, V, P, dt):
     X,Y = grid.get_block(0)
     p_plot = ax.pcolormesh(X,Y,P[0])
     w_plot = ax.quiver(X,Y,U[0],V[0])
+    p_min = np.min(np.array(P).flatten())
+    p_max = np.max(np.array(P).flatten())
+    p_plot.set_clim([p_min, p_max])
     fig.colorbar(p_plot, ax=ax)
 
     def update(num, p_plot, w_plot):
@@ -50,12 +57,15 @@ def animate_solution(grid, U, V, P, dt):
         v = V[num%nt]
         p = P[num%nt]
         ax.clear()
-        p_plot = ax.pcolormesh(X,Y,p)
-        w_plot = ax.quiver(X,Y,u,v)
-        ax.set_title("t = {:.2f}".format((num%nt)*dt))
+
+        p_min = np.min(np.array(p).flatten())
+        p_max = np.max(np.array(p).flatten())
+        p_plot.set_clim([p_min, p_max])
+        p_plot.set_array(p[:-1,:-1].ravel())
+        w_plot.set_UVC(u,v)
 
         return p_plot, w_plot
 
-    anim = animation.FuncAnimation(fig, update, fargs=(p_plot, w_plot), interval=1000*dt)
+    anim = animation.FuncAnimation(fig, update, fargs=(p_plot, w_plot), interval=1000*dt, blit = True)
     plt.show()
 
