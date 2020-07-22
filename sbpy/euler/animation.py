@@ -13,13 +13,11 @@ def animate_pressure(grid, P, dt):
 
     def update(num, pressure_plot):
         p = P[num%nt]
-        ax.clear()
         pressure_plot = ax.pcolormesh(X,Y,p)
-        ax.set_title("t = {:.2f}".format((num%nt)*dt))
 
         return pressure_plot,
 
-    anim = animation.FuncAnimation(fig, update, fargs=(plot,), interval=1000*dt)
+    anim = animation.FuncAnimation(fig, update, fargs=(plot,), interval=1000*dt, blit = True)
     plt.show()
 
 
@@ -33,11 +31,10 @@ def animate_velocity(grid, U, V, dt):
         u = U[num%nt]
         v = V[num%nt]
         plot.set_UVC(u,v)
-        ax.set_title("t = {:.2f}".format((num%nt)*dt))
 
         return plot,
 
-    anim = animation.FuncAnimation(fig, update, fargs=(plot,), interval=1000*dt)
+    anim = animation.FuncAnimation(fig, update, fargs=(plot,), interval=1000*dt, blit = True)
     plt.show()
 
 
