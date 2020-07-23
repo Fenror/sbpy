@@ -7,7 +7,7 @@ from scipy.optimize import approx_fprime
 
 from sbpy.utils import get_circle_sector_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
-from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator
+from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator, stabilized_outflow_operator
 
 class TestSpatialOperator(unittest.TestCase):
 
@@ -37,19 +37,6 @@ class TestSpatialOperator(unittest.TestCase):
 
         for i,grad in enumerate(J):
             f = lambda x: wall_operator(self.sbp, x, 0, 'w')[0][i]
-            grad_approx = approx_fprime(self.state, f, 1e-8)
-            grad_exact = J[i,:]
-            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
-            self.assertTrue(err < 1e-5)
-
-
-    def test_wall_jacobian_with_data(self):
-        S, J = wall_operator(self.sbp, self.state, 0, 'w', data = 1)
-        J = J.todense()
-
-        for i,grad in enumerate(J):
-            f = lambda x: wall_operator(self.sbp, x, 0, 'w', data = 1)[0][i]
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
@@ -89,6 +76,20 @@ class TestSpatialOperator(unittest.TestCase):
 
         for i,grad in enumerate(J):
             f = lambda x: inflow_operator(self.sbp, x, 0, 'w', -1, 1)[0][i]
+            grad_approx = approx_fprime(self.state, f, 1e-8)
+            grad_exact = J[i,:]
+            print(grad_approx)
+            print(grad_exact)
+            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
+            print("Gradient error = {:.2e}".format(err))
+            self.assertTrue(err < 1e-5)
+
+    def test_stabilized_outflow_jacobian(self):
+        S, J = stabilized_outflow_operator(self.sbp, self.state, 0, 'w')
+        J = J.todense()
+
+        for i,grad in enumerate(J):
+            f = lambda x: stabilized_outflow_operator(self.sbp, x, 0, 'w')[0][i]
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             print(grad_approx)
