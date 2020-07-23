@@ -185,29 +185,29 @@ def inflow_operator(sbp, state, block_idx, side, wn_data, wt_data):
     s2 = np.zeros((num_blocks,Nx,Ny))
     s3 = np.zeros((num_blocks,Nx,Ny))
 
-    s1[block_idx][bd_slice] = -0.5*lift*nx*wn*(wn-wn_data) \
-                              +0.5*lift*ny*wn*(wt-wt_data)
-    s2[block_idx][bd_slice] = -0.5*lift*ny*wn*(wn-wn_data) \
-                              -0.5*lift*nx*wn*(wt-wt_data)
+    s1[block_idx][bd_slice] = -lift*nx*wn*(wn-wn_data) \
+                              +lift*ny*wn*(wt-wt_data)
+    s2[block_idx][bd_slice] = -lift*ny*wn*(wn-wn_data) \
+                              -lift*nx*wn*(wt-wt_data)
     s3[block_idx][bd_slice] = -lift*(wn-wn_data)
 
     S = np.array([s1, s2, s3]).flatten()
 
     #Jacobian
     ds1du = np.zeros((Nx,Ny))
-    ds1du[bd_slice] = -0.5*lift*(nx*nx*(2*wn-wn_data) + ny*ny*wn - nx*ny*(wt-wt_data))
+    ds1du[bd_slice] = -lift*(nx*nx*(2*wn-wn_data) + ny*ny*wn - nx*ny*(wt-wt_data))
     ds1du = sparse.diags(ds1du.flatten())
     ds1dv = np.zeros((Nx,Ny))
-    ds1dv[bd_slice] = -0.5*lift*(nx*ny*(2*wn-wn_data) - ny*nx*wn - ny*ny*(wt-wt_data))
+    ds1dv[bd_slice] = -lift*(nx*ny*(2*wn-wn_data) - ny*nx*wn - ny*ny*(wt-wt_data))
     ds1dv = sparse.diags(ds1dv.flatten())
     ds1dp = np.zeros((Nx,Ny))
     ds1dp = sparse.diags(ds1dp.flatten())
 
     ds2du = np.zeros((Nx,Ny))
-    ds2du[bd_slice] = -0.5*lift*(nx*ny*(2*wn-wn_data) - nx*ny*wn + nx*nx*(wt-wt_data))
+    ds2du[bd_slice] = -lift*(nx*ny*(2*wn-wn_data) - nx*ny*wn + nx*nx*(wt-wt_data))
     ds2du = sparse.diags(ds2du.flatten())
     ds2dv = np.zeros((Nx,Ny))
-    ds2dv[bd_slice] = -0.5*lift*(ny*ny*(2*wn-wn_data) + nx*nx*wn + nx*ny*(wt-wt_data))
+    ds2dv[bd_slice] = -lift*(ny*ny*(2*wn-wn_data) + nx*nx*wn + nx*ny*(wt-wt_data))
     ds2dv = sparse.diags(ds2dv.flatten())
     ds2dp = np.zeros((Nx,Ny))
     ds2dp = sparse.diags(ds2dp.flatten())
@@ -384,6 +384,85 @@ def outflow_operator(sbp, state, block_idx, side):
 
 
     return np.array([S,J], dtype=object)
+
+def stabilized_outflow_operator(sbp, state, block_idx, side):
+    
+    ## for outflow boundary that might switch to inflow 
+
+    u,v,p    = vec_to_tensor(sbp.grid, state)
+    bd_slice = sbp.grid.get_boundary_slice(block_idx, side)
+    normals = sbp.get_normals(block_idx, side)
+    nx      = normals[:,0]
+    ny      = normals[:,1]
+    u_bd    = u[block_idx][bd_slice]
+    v_bd    = v[block_idx][bd_slice]
+    p_bd    = p[block_idx][bd_slice]
+    wn      = u_bd*nx + v_bd*ny
+    wt      = -u_bd*ny + v_bd*nx
+    pinv    = sbp.get_pinv(block_idx, side)
+    bd_quad = sbp.get_boundary_quadrature(block_idx, side)
+    lift    = pinv*bd_quad
+
+    Nx,Ny      = sbp.grid.get_shapes()[0]
+    num_blocks = sbp.grid.num_blocks
+    s1 = np.zeros((num_blocks,Nx,Ny))
+    s2 = np.zeros((num_blocks,Nx,Ny))
+    s3 = np.zeros((num_blocks,Nx,Ny))
+
+    #parameters for sigmoid function, large a --> more steep cure, c --> shift sideways
+    a = 15
+    c = 0.2
+    h = np.exp(c)/(np.exp(a*wn) + np.exp(c))
+ 
+    w2 = wn*wn+wt*wt
+    s1[block_idx][bd_slice] = -lift*nx*(h*w2+p_bd)
+    s2[block_idx][bd_slice] = -lift*ny*(h*w2+p_bd)  
+    #s3[block_idx][bd_slice] = -lift*(wn-wn_data)
+
+    S = np.array([s1, s2, s3]).flatten()
+
+    #Jacobian
+    dhdwn = -a*np.exp(a*wn+c)/((np.exp(a*wn) + np.exp(c))**2)
+    dhdu  = dhdwn*nx
+    dhdv  = dhdwn*ny
+
+    dw2du = 2*(wn*nx-wt*ny) # derivative of wn^2+wt^2 w.r.t. u
+    dw2dv = 2*(wn*ny+wt*nx) # derivative of wn^2+wt^2 w.r.t. v
+
+    ds1du           = np.zeros((Nx,Ny))
+    ds1du[bd_slice] = -lift*nx*(dhdu*w2+h*dw2du)
+    ds1du           = sparse.diags(ds1du.flatten())
+    
+    ds1dv           = np.zeros((Nx,Ny))
+    ds1dv[bd_slice] = -lift*nx*(dhdv*w2+h*dw2dv)
+    ds1dv           = sparse.diags(ds1dv.flatten())
+
+    ds1dp           = np.zeros((Nx,Ny))
+    ds1dp[bd_slice] = -lift*nx
+    ds1dp           = sparse.diags(ds1dp.flatten())
+
+    ds2du           = np.zeros((Nx,Ny))
+    ds2du[bd_slice] = -lift*ny*(dhdu*w2+h*dw2du)
+    ds2du           = sparse.diags(ds2du.flatten())
+
+    ds2dv           = np.zeros((Nx,Ny))
+    ds2dv[bd_slice] = -lift*ny*(dhdv*w2+h*dw2dv)
+    ds2dv           = sparse.diags(ds2dv.flatten())
+
+    ds2dp           = np.zeros((Nx,Ny))
+    ds2dp[bd_slice] = -lift*ny
+    ds2dp           = sparse.diags(ds2dp.flatten())
+
+    ds3du           = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dv           = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+    ds3dp           = sparse.csr_matrix((Nx*Ny, Nx*Ny))
+
+    J = sparse.bmat([[ds1du, ds1dv, ds1dp],
+                     [ds2du, ds2dv, ds2dp],
+                     [ds3du, ds3dv, ds3dp]])
+
+    return np.array([S,J], dtype=object)
+
 
 
 def backward_euler(op, prev_state, dt, tol):
