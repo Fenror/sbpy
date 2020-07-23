@@ -116,7 +116,7 @@ def get_bump_grid(N):
     x1 = 1.5
     dx = (x1-x0)/(N-1)
     y0 = lambda x: 0.0625*np.exp(-25*x**2)
-    y1 = lambda y: 0.8 - 0.0625*np.exp(-25*y**2)
+    y1 = lambda y: 0.8
     x = np.zeros(N*N)
     y = np.copy(x)
     pos = 0
