@@ -7,9 +7,9 @@ from scipy.optimize import approx_fprime
 
 from sbpy.utils import get_circle_sector_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
-from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator, stabilized_outflow_operator
+from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator, outflow_operator
 
-class TestSpatialOperator(unittest.TestCase):
+class TestSpatialOperators(unittest.TestCase):
 
     (X,Y) = get_circle_sector_grid(3, 0.0, 3.14/2, 0.2, 1.0)
     grid = MultiblockGrid([(X,Y)])
@@ -19,6 +19,7 @@ class TestSpatialOperator(unittest.TestCase):
     P = X**2 + Y**2
     state = np.array([U, V, P]).flatten()
 
+
     def test_euler_jacobian(self):
         S, J = euler_operator(self.sbp, self.state)
 
@@ -27,7 +28,7 @@ class TestSpatialOperator(unittest.TestCase):
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
+            print("Euler OP, Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
 
@@ -40,7 +41,7 @@ class TestSpatialOperator(unittest.TestCase):
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
+            print("Wall SAT, Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
 
@@ -53,7 +54,20 @@ class TestSpatialOperator(unittest.TestCase):
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
+            print("Pressure SAT, Gradient error = {:.2e}".format(err))
+            self.assertTrue(err < 1e-5)
+
+
+    def test_inflow_jacobian(self):
+        S, J = inflow_operator(self.sbp, self.state, 0, 'w', -1, 1)
+        J = J.todense()
+
+        for i,grad in enumerate(J):
+            f = lambda x: inflow_operator(self.sbp, x, 0, 'w', -1, 1)[0][i]
+            grad_approx = approx_fprime(self.state, f, 1e-8)
+            grad_exact = J[i,:]
+            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
+            print("Inflow SAT, Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
 
@@ -66,36 +80,7 @@ class TestSpatialOperator(unittest.TestCase):
             grad_approx = approx_fprime(self.state, f, 1e-8)
             grad_exact = J[i,:]
             err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
-            self.assertTrue(err < 1e-5)
-
-
-    def test_inflow_jacobian(self):
-        S, J = inflow_operator(self.sbp, self.state, 0, 'w', -1, 1)
-        J = J.todense()
-
-        for i,grad in enumerate(J):
-            f = lambda x: inflow_operator(self.sbp, x, 0, 'w', -1, 1)[0][i]
-            grad_approx = approx_fprime(self.state, f, 1e-8)
-            grad_exact = J[i,:]
-            print(grad_approx)
-            print(grad_exact)
-            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
-            self.assertTrue(err < 1e-5)
-
-    def test_stabilized_outflow_jacobian(self):
-        S, J = stabilized_outflow_operator(self.sbp, self.state, 0, 'w')
-        J = J.todense()
-
-        for i,grad in enumerate(J):
-            f = lambda x: stabilized_outflow_operator(self.sbp, x, 0, 'w')[0][i]
-            grad_approx = approx_fprime(self.state, f, 1e-8)
-            grad_exact = J[i,:]
-            print(grad_approx)
-            print(grad_exact)
-            err = np.linalg.norm(grad_approx-grad_exact, ord=np.inf)
-            print("Gradient error = {:.2e}".format(err))
+            print("Outflow SAT, Gradient error = {:.2e}".format(err))
             self.assertTrue(err < 1e-5)
 
 

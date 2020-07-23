@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from sbpy.utils import get_circle_sector_grid, get_bump_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
-from euler import euler_operator, wall_operator, backward_euler, vec_to_tensor, outflow_operator, pressure_operator, sbp_in_time, inflow_operator, stabilized_outflow_operator
+from euler import euler_operator, wall_operator, backward_euler, vec_to_tensor, outflow_operator, pressure_operator, sbp_in_time, inflow_operator
 from animation import animate_pressure, animate_velocity, animate_solution
 
 ##Resolution
@@ -43,7 +43,7 @@ sbp  = MultiblockSBP(grid, accuracy=4)
 #initu = 2*np.array([gauss_bell1 + gauss_bell2])/np.max(gauss_bell1.flatten())
 #initv = np.array([0*X])
 
-##Single whirl
+#Single whirl
 rv = scipy.stats.multivariate_normal([0.5, 0.5], 0.01*np.eye(2))
 gauss_bell = rv.pdf(np.dstack((X,Y)))
 initu = 2*np.array([gauss_bell])/np.max(gauss_bell.flatten())
@@ -65,14 +65,11 @@ plt.show()
 def spatial_op(state):
     S,J = euler_operator(sbp, state) + \
           wall_operator(sbp, state, 0, 'w') + \
-          stabilized_outflow_operator(sbp, state, 0, 'e') + \
+          outflow_operator(sbp, state, 0, 'e') + \
           wall_operator(sbp, state, 0, 's') + \
           wall_operator(sbp, state, 0, 'n')
 
     return S, J
-#inflow_operator(sbp, state, 0, 'w', -1, 0) + \
-#stabilized_outflow_operator(sbp, state, 0, 'w') + \
-#pressure_operator(sbp, state, 0, 'e') + \
 
 ##Solve
 Psol=[]
