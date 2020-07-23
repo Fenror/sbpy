@@ -9,7 +9,7 @@ from sbpy.utils import get_circle_sector_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP
 from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator, outflow_operator
 
-class TestSpatialOperators(unittest.TestCase):
+class TestJacobians(unittest.TestCase):
 
     (X,Y) = get_circle_sector_grid(3, 0.0, 3.14/2, 0.2, 1.0)
     grid = MultiblockGrid([(X,Y)])

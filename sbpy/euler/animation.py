@@ -55,13 +55,13 @@ def animate_solution(grid, U, V, P, dt):
         u = U[num%nt]
         v = V[num%nt]
         p = P[num%nt]
-        ax.clear()
 
         p_min = np.min(np.array(p).flatten())
         p_max = np.max(np.array(p).flatten())
         p_plot.set_clim([p_min, p_max])
         p_plot.set_array(p[:-1,:-1].ravel())
         w_plot.set_UVC(u,v)
+        print("t = {:.2f}".format((num%nt)*dt), end='\r')
 
         return p_plot, w_plot
 

@@ -25,6 +25,7 @@ import warnings
 import numpy as np
 import scipy
 from scipy import sparse
+from tqdm import tqdm
 
 from sbpy import operators
 
@@ -354,7 +355,7 @@ def outflow_operator(sbp, state, block_idx, side):
     return np.array([S,J], dtype=object)
 
 
-def backward_euler(op, prev_state, dt, tol):
+def backward_euler_step(op, prev_state, dt, tol):
     N = int(len(prev_state)/3)
 
     def F(new_state, prev_state):
@@ -398,7 +399,39 @@ def backward_euler(op, prev_state, dt, tol):
     return new_state
 
 
-def sbp_in_time(op, cur_state, dt, tol):
+def solve(grid, spatial_operator, init_u, init_v, init_p, dt, num_steps):
+    """ Solves an Euler problem.
+    Arguments:
+        grid: A MultiblockGrid object associated to the problem.
+        spatial_operator: A spatial operator built from the euler_operator 
+            plus SAT operators.
+        init_u: Initial data for u as a multiblock function.
+        init_v: Initial data for v as a multiblock function.
+        init_p: Initial data for p as a multiblock function.
+
+    Returns:
+        U: A list of multiblock functions representing u in each time step.
+        V: A list of multiblock functions representing v in each time step.
+        P: A list of multiblock functions representing p in each time step.
+    """
+    P=[]
+    U=[]
+    V=[]
+    sol = np.array([init_u, init_v, init_p]).flatten()
+    tol = 1e-12
+    for k in tqdm(range(num_steps)):
+        sol = backward_euler_step(spatial_operator, sol, dt, tol)
+
+        sol = vec_to_tensor(grid, sol)
+        U.append(sol[0][0])
+        V.append(sol[1][0])
+        P.append(sol[2][0])
+        sol = sol.flatten()
+
+    return U,V,P
+
+
+def sbp_in_time_step(op, cur_state, dt, tol):
     N = int(len(cur_state)/3)
 
     def F(prev_state, next_state):
