@@ -40,31 +40,29 @@ def animate_velocity(grid, U, V, dt):
     plt.show()
 
 
-def animate_solution(grid, U, V, P, dt):
+def animate_solution(grid, U, V, dt):
     nt = len(U)
     fig, ax = plt.subplots(1,1)
     X,Y = grid.get_block(0)
-    p_plot = ax.pcolormesh(X,Y,P[0])
+    S = np.sqrt(np.array(U)**2 + np.array(V)**2)
+    s_plot = ax.pcolormesh(X,Y,S[0])
     w_plot = ax.quiver(X,Y,U[0],V[0])
-    p_min = np.min(np.array(P).flatten())
-    p_max = np.max(np.array(P).flatten())
-    p_plot.set_clim([p_min, p_max])
-    fig.colorbar(p_plot, ax=ax)
+    s_min = np.min(np.array(S).flatten())
+    s_max = np.max(np.array(S).flatten())
+    s_plot.set_clim([s_min, s_max])
+    fig.colorbar(s_plot, ax=ax)
 
-    def update(num, p_plot, w_plot):
+    def update(num, s_plot, w_plot):
         u = U[num%nt]
         v = V[num%nt]
-        p = P[num%nt]
+        s = S[num%nt]
 
-        p_min = np.min(np.array(p).flatten())
-        p_max = np.max(np.array(p).flatten())
-        p_plot.set_clim([p_min, p_max])
-        p_plot.set_array(p[:-1,:-1].ravel())
+        s_plot.set_array(s[:-1,:-1].ravel())
         w_plot.set_UVC(u,v)
         print("t = {:.2f}".format((num%nt)*dt), end='\r')
 
-        return p_plot, w_plot
+        return s_plot, w_plot
 
-    anim = animation.FuncAnimation(fig, update, fargs=(p_plot, w_plot), interval=1000*dt, blit = True)
+    anim = animation.FuncAnimation(fig, update, fargs=(s_plot, w_plot), interval=1000*dt, blit = True)
     plt.show()
 

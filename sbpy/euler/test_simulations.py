@@ -280,6 +280,6 @@ def circle_sector_cavity_flow(
 
 if __name__ == '__main__':
     grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=150)
-    animate_velocity(grid,U,V,dt)
+    animate_solution(grid,U,V,dt)
 
 
