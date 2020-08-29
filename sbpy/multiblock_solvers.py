@@ -258,7 +258,7 @@ class AdvectionDiffusionSolver:
             bd_quad  = self.grid.sbp_ops[block_idx].boundary_quadratures[side]
             inflow   = self.inflow[block_idx][side]
             outflow  = np.invert(inflow)
-            sigma    = pinv*bd_quad
+            sigma    = 50*pinv*bd_quad
             u        = self.U[block_idx][bd_slice]
             ux       = self.Ux[block_idx][bd_slice]
             uy       = self.Uy[block_idx][bd_slice]

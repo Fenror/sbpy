@@ -1,12 +1,13 @@
 import sys
 sys.path.append('../..')
 import pickle
+from mayavi import mlab
+import numpy as np
 
 from sbpy import grid2d
 from sbpy import multiblock_solvers
 from sbpy import animation
 from sbpy import utils
-from mayavi import mlab
 
 with open('highres_data/highres_sol161_29.pkl', 'rb') as f:
     U_highres,diffusion = pickle.load(f)

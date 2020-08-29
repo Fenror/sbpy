@@ -42,8 +42,8 @@ int_data_pred = model(np.array([[diffusion]]))[0].numpy()
 #        nodes, fine_grid, U_highres, stride=8)
 
 solver = multiblock_solvers.AdvectionDiffusionSolver(coarse_grid,
-        velocity=velocity, diffusion=diffusion)
-        #internal_data = int_data_pred, internal_indices = nodes)
+        velocity=velocity, diffusion=diffusion,
+        internal_data = int_data_pred, internal_indices = nodes)
 
 solver.set_boundary_condition(1,{'type': 'dirichlet', 'data': g})
 solver.set_boundary_condition(3,{'type': 'dirichlet', 'data': g})

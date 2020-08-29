@@ -8,7 +8,7 @@ from sbpy import utils
 
 N = 161
 blocks = utils.get_annulus_grid(N)
-fine_grid = grid2d.MultiblockSBP(blocks, accuracy=4)
+fine_grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
 
 def g(t,x,y):
     return 1

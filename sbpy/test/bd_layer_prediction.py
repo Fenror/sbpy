@@ -11,6 +11,8 @@ from sbpy import grid2d
 from sbpy import multiblock_solvers
 from sbpy import utils
 
+num_nodes = 1
+
 N = 21
 blocks = utils.get_annulus_grid(N)
 coarse_grid = grid2d.MultiblockGridSBP(blocks, accuracy=4)
@@ -27,7 +29,7 @@ for k in range(30):
     with open(filename, 'rb') as f:
         U_highres,diffusion = pickle.load(f)
 
-    nodes    = utils.boundary_layer_selection(coarse_grid, [1,3,5,7], 4)
+    nodes = utils.boundary_layer_selection(coarse_grid, [1,3,5,7], num_nodes)
     int_data = utils.fetch_highres_data(coarse_grid,
                                         nodes,
                                         fine_grid,
@@ -43,7 +45,7 @@ train_y = num_copies*train_y
 train_x = np.array(train_x)
 train_y = np.array(train_y)
 
-model    = models.Sequential()
+model = models.Sequential()
 
 model.add(layers.Dense(64,activation='relu',input_shape=(1,)))
 model.add(layers.Dense(64,activation='relu'))
@@ -52,8 +54,9 @@ model.add(layers.Dense(64,activation='relu'))
 model.add(layers.Dense(64,activation='relu'))
 model.add(layers.Dense(64,activation='relu'))
 model.add(layers.Dense(64,activation='relu'))
-model.add(layers.Dense(4*4*21, activation="linear"))
+model.add(layers.Dense(64,activation='relu'))
+model.add(layers.Dense(num_nodes*4*21, activation="linear"))
 
 model.compile('adam','mse')
 model.fit(train_x,train_y,epochs=30)
-model.save('bd_layer_predictor.h5')
+model.save('bd_layer_predictor_1pts.h5')
