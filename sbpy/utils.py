@@ -104,7 +104,7 @@ def get_annulus_grid(N):
     return blocks
 
 
-def get_bump_grid(N):
+def get_bump_grid(Nx,Ny):
     """ Returns a grid with two bumps in the floor and ceiling.
     Arguments:
         N: Number of gridpoints in each direction.
@@ -114,21 +114,21 @@ def get_bump_grid(N):
     """
     x0 = -1.5
     x1 = 1.5
-    dx = (x1-x0)/(N-1)
+    dx = (x1-x0)/(Nx-1)
     y0 = lambda x: 0.0625*np.exp(-25*x**2)
     y1 = lambda y: 0.8
-    x = np.zeros(N*N)
+    x = np.zeros(Nx*Ny)
     y = np.copy(x)
     pos = 0
-    for i in range(N):
-        for j in range(N):
+    for i in range(Nx):
+        for j in range(Ny):
             x_val = x0 + i*dx
             x[pos] = x_val
-            y[pos] = y0(x_val) + j*(y1(x_val)-y0(x_val))/(N-1)
+            y[pos] = y0(x_val) + j*(y1(x_val)-y0(x_val))/(Ny-1)
             pos = pos+1
 
-    X = np.reshape(x,(N,N))
-    Y = np.reshape(y,(N,N))
+    X = np.reshape(x,(Nx,Ny))
+    Y = np.reshape(y,(Nx,Ny))
 
     return X,Y
 

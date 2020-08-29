@@ -1,4 +1,4 @@
-import unittest
+import unittest,pdb
 
 from scipy.stats import multivariate_normal
 import numpy as np
@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 from sbpy.utils import get_circle_sector_grid, get_bump_grid
 from sbpy.grid2d import MultiblockGrid, MultiblockSBP, get_center
-from sbpy.euler.animation import animate_pressure, animate_velocity, animate_solution
+from sbpy.euler.animation import animate_pressure, animate_velocity, animate_solution, animate_speed, plot_speed, plot_velocity
 from euler import euler_operator, wall_operator, outflow_operator, pressure_operator, inflow_operator, outflow_operator, solve
 
 
@@ -22,16 +22,17 @@ def get_gauss_initial_data(X, Y, cx, cy):
 
 
 def bump_const_inflow_pressure_outflow(
-        N = 30,
+        Nx = 49,
+        Ny = 17,
         num_timesteps = 10,
         dt = 0.1):
 
-    X,Y = get_bump_grid(N)
+    X,Y = get_bump_grid(Nx,Ny)
     grid = MultiblockGrid([(X,Y)])
     sbp = MultiblockSBP(grid, accuracy=2)
     initu = np.array([np.ones(X.shape)])
     initv = np.array([np.zeros(X.shape)])
-    initp = np.array([np.ones(X.shape)])
+    initp = np.array([np.zeros(X.shape)])
     plt.quiver(X,Y,initu[0],initv[0])
     plt.show()
 
@@ -53,7 +54,8 @@ def bump_const_inflow_pressure_outflow(
 
 
 def bump_const_inflow_pressure_speed_outflow(
-        N = 30,
+        Nx = 49,
+        Ny = 17,
         num_timesteps = 10,
         dt = 0.1):
 
@@ -84,7 +86,8 @@ def bump_const_inflow_pressure_speed_outflow(
 
 
 def bump_walls_and_pressure_speed_outflow(
-        N = 30,
+        Nx = 49,
+        Ny = 17,
         num_timesteps = 10,
         dt = 0.1):
 
@@ -237,8 +240,8 @@ def square_cavity_flow(
 
 
 def circle_sector_cavity_flow(
-        N = 30,
-        num_timesteps = 10,
+        N = 40,
+        num_timesteps = 30,
         dt = 0.1,
         angle = 0.5*np.pi):
 
@@ -279,7 +282,13 @@ def circle_sector_cavity_flow(
 #circle_sector_cavity_flow()
 
 if __name__ == '__main__':
-    grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=150)
-    animate_solution(grid,U,V,dt)
+    #grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=50)
+    grid,U,V,P,dt = bump_const_inflow_pressure_outflow(
+            num_timesteps=2, Nx = 49-1, Ny = 17-1)
+    #grid,U,V,P,dt = circle_sector_cavity_flow()
+    #grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=30)
+    #animate_solution(grid,U,V,dt)
+    #plot_speed(grid,U[-1],V[-1])
+    plot_velocity(grid,U[-1],V[-1])
 
 
