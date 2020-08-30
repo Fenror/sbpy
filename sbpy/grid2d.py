@@ -523,51 +523,6 @@ class MultiblockSBP:
         return self.sbp_ops[block_idx].Dy
 
 
-
-class MultiblockGridSBP(MultiblockGrid):
-    """ A class combining MultiblockGrid functionality and SBP2D functionality.  """
-
-    def __init__(self, blocks, accuracy = 2):
-        """ Initializes a MultiblockSBP object.
-        Args:
-            blocks: A list of matrix pairs representing the blocks.
-        Optional:
-            accuracy: The interior accuracy of the difference operators (2 or 4).
-        """
-        super().__init__(blocks)
-
-        # Create SBP2D objects for each block.
-        self.sbp_ops = []
-        for (X,Y) in self.get_blocks():
-            self.sbp_ops.append(operators.SBP2D(X,Y,accuracy))
-
-
-    def diffx(self, U):
-        """ Differentiates a Multiblock function with respect to x. """
-        return np.array([ self.sbp_ops[i].diffx(U[i]) for
-                          i in range(self.num_blocks) ])
-
-
-    def diffy(self, U):
-        """ Differentiates a Multiblock function with respect to y. """
-        return np.array([ self.sbp_ops[i].diffy(U[i]) for
-                          i in range(self.num_blocks) ])
-
-    def integrate(self, U):
-        """ Integrates a Multiblock function over the domain. """
-        return sum([ self.sbp_ops[i].integrate(U[i]) for
-                     i in range(self.num_blocks) ])
-
-    def get_normals(self, block_idx, side):
-        """ Get the normals of a specified side of a particular block. """
-        return self.sbp_ops[block_idx].normals[side]
-
-
-    def get_sbp_ops(self):
-        """ Returns a list of SBP2D objects associated to each block. """
-        return self.sbp_ops
-
-
 def load_p3d(filename):
     with open(filename) as data:
         num_blocks = int(data.readline())

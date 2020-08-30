@@ -282,13 +282,13 @@ def circle_sector_cavity_flow(
 #circle_sector_cavity_flow()
 
 if __name__ == '__main__':
-    #grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=50)
-    grid,U,V,P,dt = bump_const_inflow_pressure_outflow(
-            num_timesteps=2, Nx = 49-1, Ny = 17-1)
+    grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=50)
+    #grid,U,V,P,dt = bump_const_inflow_pressure_outflow(
+    #        num_timesteps=2, Nx = 49-1, Ny = 17-1)
     #grid,U,V,P,dt = circle_sector_cavity_flow()
     #grid,U,V,P,dt = circle_sector_pressure_speed_outflow_everywhere(num_timesteps=30)
-    #animate_solution(grid,U,V,dt)
+    animate_solution(grid,U,V,dt)
     #plot_speed(grid,U[-1],V[-1])
-    plot_velocity(grid,U[-1],V[-1])
+    #plot_velocity(grid,U[-1],V[-1])
 
 
