@@ -47,7 +47,7 @@ def animate_velocity(grid, U, V, dt):
     plt.show()
 
 
-def animate_solution(grid, U, V, dt):
+def animate_solution(grid, U, V, dt, save_gif=False, repeat=True):
     nt = len(U)
     fig, ax = plt.subplots(1, 1)
     ax.set_aspect("equal")
@@ -60,20 +60,27 @@ def animate_solution(grid, U, V, dt):
     s_plot.set_clim([s_min, s_max])
     fig.colorbar(s_plot, ax=ax)
 
-    def update(num, s_plot, w_plot):
-        u = U[num % nt]
-        v = V[num % nt]
-        s = S[num % nt]
+    def update(frame, s_plot, w_plot):
+        num = frame[0]
+        u = frame[1][0]
+        v = frame[1][1]
+        s = frame[1][2]
 
         s_plot.set_array(s.ravel())
         w_plot.set_UVC(u, v)
-        print("t = {:.2f}".format((num % nt) * dt), end="\r")
+        print("t = {:.2f}".format(num * dt), end="\r")
 
         return s_plot, w_plot
 
     anim = animation.FuncAnimation(
-        fig, update, fargs=(s_plot, w_plot), interval=1000 * dt, blit=True
+        fig, update, fargs=(s_plot, w_plot),
+        frames=enumerate(zip(U,V,S)), interval=1000 * dt,
+        blit=True, repeat=repeat, save_count = len(U)
     )
+
+    if save_gif:
+        anim.save("animation.gif", writer="imagemagick", fps=int(1/dt))
+
     plt.show()
 
 
